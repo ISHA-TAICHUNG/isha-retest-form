@@ -255,7 +255,7 @@
 .id-cell-image { display: none; }
 .id-cell.has-image .id-cell-text { display: none; }
 .id-cell.has-image .id-cell-image {
-  /* 填滿模式：image 填滿 cell 145pt 高、100% 寬，超出部分由 overflow 裁掉 */
+  /* 完整顯示模式：image 置中、不裁切、不變形、保留原始比例 */
   display: block;
   width: 100%;
   height: 145pt;
@@ -265,10 +265,11 @@
   background: #fff;
 }
 .id-cell.has-image .id-cell-image img {
-  /* object-fit: cover → 圖片自動填滿 cell、保持比例、溢出裁切（主體通常在中央） */
+  /* object-fit: contain → 完整顯示整張照片、保持比例、不裁切任何部分
+     比例不合時周圍留白（比失真或裁切邊角可接受） */
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
   display: block;
 }

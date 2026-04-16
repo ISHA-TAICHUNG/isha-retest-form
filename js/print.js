@@ -161,9 +161,13 @@
     const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (!jsPDFLib) throw new Error('PDF 函式庫載入失敗（jsPDF）');
 
-    const toolbar = document.querySelector('.print-toolbar');
-    const oldDisplay = toolbar ? toolbar.style.display : null;
-    if (toolbar) toolbar.style.display = 'none';
+    // 隱藏所有 .no-print 元素（工具列、旋轉按鈕、狀態列…）避免進入 PDF
+    const noPrintEls = document.querySelectorAll('.no-print');
+    const noPrintOld = [];
+    noPrintEls.forEach((el) => {
+      noPrintOld.push({ el: el, display: el.style.display });
+      el.style.display = 'none';
+    });
 
     // 強制以 A4 寬度（19cm ≈ 718.6px @ 96dpi）渲染，避免手機窄 viewport 下壓縮版面
     const A4_RENDER_WIDTH = 720;
@@ -209,7 +213,8 @@
       page.style.width = oldW;
       page.style.minWidth = oldMinW;
       page.style.maxWidth = oldMaxW;
-      if (toolbar) toolbar.style.display = oldDisplay;
+      // 還原 no-print 元素原本 display 狀態
+      noPrintOld.forEach((r) => { r.el.style.display = r.display; });
     }
   }
 
