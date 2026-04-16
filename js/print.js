@@ -187,17 +187,23 @@
       const imgData = canvas.toDataURL('image/jpeg', 0.92);
       const pdf = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageW = 210, pageH = 297;
+      // 印表機安全邊界：多數家用／辦公印表機不可列印區約 3-5mm，
+      // 預留 6mm 邊界讓使用者能用「100% 原始大小」直接列印不被裁切。
+      const safeMargin = 6;
+      const printableW = pageW - safeMargin * 2;
+      const printableH = pageH - safeMargin * 2;
       const imgRatio = canvas.height / canvas.width;
 
-      let drawW = pageW;
-      let drawH = pageW * imgRatio;
-      let offsetX = 0;
-      if (drawH > pageH) {
-        drawH = pageH;
-        drawW = pageH / imgRatio;
-        offsetX = (pageW - drawW) / 2;
+      // 以「等比例縮放」塞進可列印區，取長寬兩者較嚴格的限制
+      let drawW = printableW;
+      let drawH = printableW * imgRatio;
+      if (drawH > printableH) {
+        drawH = printableH;
+        drawW = printableH / imgRatio;
       }
-      pdf.addImage(imgData, 'JPEG', offsetX, 0, drawW, drawH);
+      const offsetX = (pageW - drawW) / 2;
+      const offsetY = (pageH - drawH) / 2;
+      pdf.addImage(imgData, 'JPEG', offsetX, offsetY, drawW, drawH);
       return pdf.output('blob');
     } finally {
       page.style.width = oldW;

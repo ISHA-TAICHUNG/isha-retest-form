@@ -19,6 +19,9 @@ Thumbs.db
 # Node（如果未來引入工具）
 node_modules/
 
+# clasp 部署工作區（含 OAuth scriptId，本地開發用）
+tools/gas/
+
 # Log
 *.log
 

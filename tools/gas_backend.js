@@ -46,7 +46,7 @@ const ALLOWED_ORIGINS = [];
 // Rate limit：每個 IP/UA 指紋每分鐘最多請求次數
 const RATE_LIMIT_PER_MIN = 20;
 
-const CACHE_KEY = 'roster_v1';
+const CACHE_KEY = 'roster_v2';
 const CACHE_TTL_SEC = 3600;
 
 // ====== POST 入口：接收報名表送出（PDF 上傳） ======
@@ -285,6 +285,22 @@ function parseSpreadsheet(ss) {
   for (let si = 0; si < sheets.length; si++) {
     const ws = sheets[si];
     const data = ws.getDataRange().getValues();
+    if (data.length < 2) continue;
+
+    // 偵測格式：
+    // - 新版（系統匯出的一排欄位）：Row 1 包含「批號」「身分證號」等欄位名
+    // - 舊版（TP610 樣板）：Row 1-7 為抬頭、Row 8 起為資料
+    const firstRow = (data[0] || []).map(function (v) { return cellStr(v); });
+    const isFlatHeader =
+      firstRow.indexOf('批號') !== -1 ||
+      firstRow.indexOf('身分證號') !== -1 ||
+      firstRow.indexOf('身分證字號') !== -1;
+
+    if (isFlatHeader) {
+      Array.prototype.push.apply(out, parseFlatFormat(data));
+      continue;
+    }
+
     if (data.length < 8) continue;
     const meta = parseHeader(data);
     if (!meta.year && si > 0) continue;
@@ -312,6 +328,73 @@ function parseSpreadsheet(ss) {
         trainingUnitRaw: meta.trainingUnitRaw,
       });
     }
+  }
+  return out;
+}
+
+/**
+ * 解析「平面欄位」格式（系統匯出清冊）：
+ *   Row 1 = 欄位名稱，Row 2 起為資料
+ *   已知欄位：批號 / 報名訓練單位代碼 / 報名訓練單位名稱 / 測驗機構代碼
+ *            / 測驗職類代碼 / 測驗年度 / 測驗梯次
+ *            / 結業訓練單位代碼 / 結業訓練單位名稱
+ *            / 訓練種類代碼 / 訓練種類名稱 / 期別
+ *            / 姓名 / 身分證號 / 出生日期 / 聯絡電話
+ *            / 郵遞區號 / 通訊住址 / 學歷
+ *            / 開訓日 / 結訓日 / 主管機關核准文號
+ *            / 主管機關代碼 / 主管機關名稱
+ */
+function parseFlatFormat(data) {
+  const headers = (data[0] || []).map(function (v) { return cellStr(v); });
+  const col = {};
+  for (let i = 0; i < headers.length; i++) {
+    col[headers[i]] = i;
+  }
+  const pick = function (row, name) {
+    const idx = col[name];
+    if (idx === undefined) return '';
+    return cellStr(row[idx]);
+  };
+
+  // 預先抽出測驗職類代碼 → 對應職類名稱（用「訓練種類名稱」或「訓練種類代碼」）
+  const out = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const idNumber = pick(row, '身分證號') || pick(row, '身分證字號');
+    const name = pick(row, '姓名');
+    if (!idNumber && !name) continue;
+
+    const jobCode = pick(row, '測驗職類代碼');
+    const trainJobCode = pick(row, '訓練種類代碼');
+    const jobNameFromFile = pick(row, '訓練種類名稱');
+    // 若「訓練種類名稱」即是測驗職類對應名稱則直接帶入；
+    // 表單端會再用 jobCode 對照 js/job-categories.js 的 name。
+    out.push({
+      seq: pick(row, '批號'),
+      classNo: pick(row, '期別'),
+      name: name,
+      idNumber: idNumber.trim().toUpperCase(),
+      birthDate: pick(row, '出生日期'),
+      zipCode: pick(row, '郵遞區號'),
+      address: pick(row, '通訊住址'),
+      phone: pick(row, '聯絡電話'),
+      education: pick(row, '學歷'),
+      trainStart: pick(row, '開訓日'),
+      trainEnd: pick(row, '結訓日'),
+      authorityDoc: pick(row, '主管機關核准文號'),
+      year: pick(row, '測驗年度').replace(/\D/g, ''),
+      batch: pick(row, '測驗梯次').replace(/\D/g, ''),
+      jobCode: jobCode,
+      jobName: jobNameFromFile,
+      trainJobCode: trainJobCode,
+      trainJobName: jobNameFromFile,
+      authority: pick(row, '主管機關名稱'),
+      authorityCode: pick(row, '主管機關代碼'),
+      trainingUnitRaw: pick(row, '報名訓練單位名稱'),
+      trainingUnitCode: pick(row, '報名訓練單位代碼'),
+      venueCode: pick(row, '測驗機構代碼'),
+      venue: '',
+    });
   }
   return out;
 }
