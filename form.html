@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>填寫報名表 — 管理職類測驗補考</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0F172A" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="css/main.css?v=20260416s" />
+</head>
+<body>
+  <a href="#main" class="skip-link">跳到主要內容</a>
+
+  <header class="app-header" role="banner">
+    <div class="app-header-inner">
+      <div class="app-header-badge" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </div>
+      <div>
+        <h1>填寫補考報名表</h1>
+        <div class="subtitle">確認自動帶入欄位、補填聯絡資訊、上傳照片</div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="container" role="main">
+
+    <!-- 步驟導引 -->
+    <ol class="steps" aria-label="操作流程">
+      <li class="step done"><span class="step-num">✓</span>輸入身分證</li>
+      <li class="step-divider" aria-hidden="true"></li>
+      <li class="step active"><span class="step-num">2</span>確認資料</li>
+      <li class="step-divider" aria-hidden="true"></li>
+      <li class="step"><span class="step-num">3</span>送出</li>
+    </ol>
+
+    <!-- 教育訓練及測驗資料 -->
+    <section class="card" aria-labelledby="train-title">
+      <h2 id="train-title" class="section-heading">教育訓練及測驗資料</h2>
+      <p class="muted" style="margin: -8px 0 var(--sp-4);">黃色背景欄位為自動帶入，可手動修改</p>
+
+      <div class="form-grid">
+        <div class="form-field full">
+          <label for="trainingUnit">訓練單位</label>
+          <input type="text" id="trainingUnit" />
+          <span class="hint">系統預設值，可手動修改</span>
+        </div>
+
+        <div class="form-field">
+          <label for="authorityDoc">主管機關備查文號</label>
+          <input type="text" id="authorityDoc" />
+        </div>
+
+        <div class="form-field">
+          <label for="authority">主管機關</label>
+          <input type="text" id="authority" />
+        </div>
+
+        <div class="form-field">
+          <label for="jobCategory">測驗職類代碼及名稱</label>
+          <select id="jobCategory"></select>
+          <span class="hint">共 42 項</span>
+        </div>
+
+        <div class="form-field">
+          <label for="trainCategory">訓練職類代碼及名稱</label>
+          <input type="text" id="trainCategory" />
+          <span class="hint">通常與測驗職類相同，可手動修改</span>
+        </div>
+
+        <div class="form-field">
+          <label for="classNo">訓練期別</label>
+          <input type="text" id="classNo" />
+        </div>
+
+        <div class="form-field">
+          <label for="year">測驗年度（民國）</label>
+          <input type="text" id="year" />
+        </div>
+
+        <div class="form-field">
+          <label for="batch">梯次</label>
+          <input type="text" id="batch" />
+        </div>
+
+        <div class="form-field">
+          <label for="trainStart">訓練起日（民國 YYYMMDD）</label>
+          <input type="text" id="trainStart" placeholder="例 1141210" />
+        </div>
+
+        <div class="form-field">
+          <label for="trainEnd">訓練迄日（民國 YYYMMDD）</label>
+          <input type="text" id="trainEnd" placeholder="例 1141212" />
+        </div>
+      </div>
+    </section>
+
+    <!-- 應試者基本資料 -->
+    <section class="card" aria-labelledby="applicant-title">
+      <h2 id="applicant-title" class="section-heading">應試者基本資料</h2>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="name">姓名 <span class="required" aria-label="必填">*</span></label>
+          <input type="text" id="name" required />
+        </div>
+
+        <div class="form-field">
+          <label for="idNumber">身分證統一編號 <span class="required" aria-label="必填">*</span></label>
+          <input type="text" id="idNumber" required style="text-transform:uppercase; letter-spacing:2px; font-family:var(--font-mono);" />
+        </div>
+
+        <div class="form-field">
+          <label for="birthDate">出生日期（民國 YYYMMDD）</label>
+          <input type="text" id="birthDate" placeholder="例 0790912" />
+        </div>
+
+        <div class="form-field">
+          <label for="mobilePhone">行動電話 <span class="required" aria-label="必填">*</span></label>
+          <input type="tel" id="mobilePhone" required inputmode="tel" />
+        </div>
+
+        <div class="form-field">
+          <label for="phoneOffice">電話 (公)</label>
+          <input type="tel" id="phoneOffice" inputmode="tel" />
+        </div>
+
+        <div class="form-field">
+          <label for="phoneHome">電話 (宅)</label>
+          <input type="tel" id="phoneHome" inputmode="tel" />
+        </div>
+
+        <div class="form-field">
+          <label for="emergencyName">緊急聯絡人</label>
+          <input type="text" id="emergencyName" />
+        </div>
+
+        <div class="form-field">
+          <label for="emergencyPhone">緊急聯絡人電話</label>
+          <input type="tel" id="emergencyPhone" inputmode="tel" />
+        </div>
+
+        <div class="form-field">
+          <label for="zipCode">郵遞區號</label>
+          <input type="text" id="zipCode" maxlength="6" inputmode="numeric" />
+        </div>
+
+        <div class="form-field" style="grid-column: 2 / 3;">
+          <label for="address">聯絡地址 <span class="required" aria-label="必填">*</span></label>
+          <input type="text" id="address" required autocomplete="street-address" />
+        </div>
+
+        <div class="form-field full">
+          <label>學歷</label>
+          <div class="radio-group" id="educationGroup" role="radiogroup" aria-label="學歷">
+            <label><input type="radio" name="education" value="primary" />國小</label>
+            <label><input type="radio" name="education" value="junior" />國中</label>
+            <label><input type="radio" name="education" value="high" />高中(職)</label>
+            <label><input type="radio" name="education" value="college" />專科</label>
+            <label><input type="radio" name="education" value="bachelor" />大學</label>
+            <label><input type="radio" name="education" value="master" />碩士</label>
+            <label><input type="radio" name="education" value="phd" />博士</label>
+            <label><input type="radio" name="education" value="other" />其他</label>
+          </div>
+        </div>
+
+        <div class="form-field full">
+          <label>身心障礙或學習障礙需申請協助者</label>
+          <div class="radio-group" id="disabilityGroup" role="radiogroup" aria-label="身心障礙申請">
+            <label><input type="radio" name="disability" value="no" checked />否</label>
+            <label><input type="radio" name="disability" value="yes" />是（請於報名表後方檢附證明影本）</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 發票開立 + 應考月份 -->
+    <section class="card" aria-labelledby="invoice-title">
+      <h2 id="invoice-title" class="section-heading">發票開立 / 應考月份</h2>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>發票類型</label>
+          <div class="radio-group" id="invoiceTypeGroup" role="radiogroup" aria-label="發票類型">
+            <label><input type="radio" name="invoiceType" value="personal" checked />個人</label>
+            <label><input type="radio" name="invoiceType" value="company" />公司（填統一編號）</label>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="invoiceTaxId">統一編號（僅公司發票需填）</label>
+          <input type="text" id="invoiceTaxId" maxlength="8" inputmode="numeric" placeholder="8 位數字" style="font-family:var(--font-mono); letter-spacing:2px;" />
+        </div>
+        <div class="form-field">
+          <label for="examMonth">應考月份</label>
+          <select id="examMonth">
+            <option value="">請選擇</option>
+            <option value="1">1 月</option>
+            <option value="2">2 月</option>
+            <option value="3">3 月</option>
+            <option value="4">4 月</option>
+            <option value="5">5 月</option>
+            <option value="6">6 月</option>
+            <option value="7">7 月</option>
+            <option value="8">8 月</option>
+            <option value="9">9 月</option>
+            <option value="10">10 月</option>
+            <option value="11">11 月</option>
+            <option value="12">12 月</option>
+          </select>
+          <span class="hint">預計應試月份</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 照片上傳 -->
+    <section class="card" aria-labelledby="photo-title">
+      <h2 id="photo-title" class="section-heading">身分證影本上傳</h2>
+      <p class="muted" style="margin: -8px 0 var(--sp-5);">手機開啟時自動使用相機拍攝；電腦則可選擇檔案。上傳後會自動轉為橫式並嵌入報名表。<br />1 吋大頭照請於訓練單位列印實體報名表後，由應試者本人親自黏貼。</p>
+
+      <div class="form-grid">
+        <div class="upload-slot" data-key="idFront">
+          <div class="upload-label">身分證 — 正面</div>
+          <div class="upload-hint">含姓名、身分證字號的那一面</div>
+          <label class="upload-drop">
+            <input type="file" accept="image/*" capture="environment" data-target="idFront" hidden />
+            <div class="upload-preview">
+              <span class="upload-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4"/></svg>
+                點此上傳 / 拍照
+              </span>
+            </div>
+          </label>
+          <button type="button" class="btn btn-clear" data-clear="idFront">清除</button>
+        </div>
+
+        <div class="upload-slot" data-key="idBack">
+          <div class="upload-label">身分證 — 反面</div>
+          <div class="upload-hint">含父母配偶、戶籍地址那一面</div>
+          <label class="upload-drop">
+            <input type="file" accept="image/*" capture="environment" data-target="idBack" hidden />
+            <div class="upload-preview">
+              <span class="upload-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h7"/></svg>
+                點此上傳 / 拍照
+              </span>
+            </div>
+          </label>
+          <button type="button" class="btn btn-clear" data-clear="idBack">清除</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 動作按鈕 -->
+    <div class="btn-row center">
+      <button class="btn btn-secondary" id="backBtn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        返回查詢
+      </button>
+      <button class="btn btn-accent btn-large" id="previewBtn" type="button">
+        下一步（確認資料）
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <script src="js/config.js?v=20260416s"></script>
+  <script src="js/utils.js?v=20260416s"></script>
+  <script src="js/job-categories.js?v=20260416s"></script>
+  <script src="js/form.js?v=20260416s"></script>
+</body>
+</html>

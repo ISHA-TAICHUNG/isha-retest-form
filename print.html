@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>確認送出 — 管理職類測驗補考報名表</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="css/main.css?v=20260416s" />
+  <link rel="stylesheet" href="css/print.css?v=20260416s" />
+</head>
+<body>
+  <div class="print-toolbar no-print">
+    <button class="btn btn-secondary" id="backBtn" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      返回編輯
+    </button>
+    <button class="btn btn-accent btn-large" id="submitBtn" type="button">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      送出報名（上傳至訓練單位）
+    </button>
+  </div>
+
+  <div id="submitStatus" class="submit-status hidden no-print" role="status" aria-live="polite"></div>
+
+  <!-- A4 列印區 — 對齊 TP610 套印檔 -->
+  <div class="print-page" id="printPage">
+    <!-- 標題列（用 table 確保列印對齊） -->
+    <table class="print-header-table">
+      <colgroup>
+        <col style="width:20%;" />
+        <col style="width:60%;" />
+        <col style="width:20%;" />
+      </colgroup>
+      <tr>
+        <td></td>
+        <td class="print-header-title">
+          <h1 class="print-title"><span id="printYear">115</span>年度職業安全衛生教育訓練管理職類</h1>
+          <h2 class="print-subtitle">結訓測驗報名表</h2>
+        </td>
+        <td class="print-header-invoice">
+          <div class="invoice-title">發票開立</div>
+          <div class="invoice-row">
+            <span id="invoicePersonal">□</span> 個人
+          </div>
+          <div class="invoice-row">
+            <span id="invoiceCompany">□</span> 統編：<span id="invoiceTaxId" class="invoice-taxid"></span>
+          </div>
+          <div class="invoice-row" style="border-top:1pt dashed #aaa; margin-top:3pt; padding-top:3pt;">
+            應考月份：<span id="invoiceExamMonth" style="font-weight:bold;"></span>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="print-admit-no">※准考證編號：________________________</div>
+    <div class="print-instruction">報名表除註記※部分勿填寫外，其餘務必須以正楷填寫，如有塗改須簽名或蓋章</div>
+
+    <table class="print-table">
+      <colgroup>
+        <col style="width:13%;" />
+        <col style="width:11%;" />
+        <col style="width:18%;" />
+        <col style="width:25%;" />
+        <col style="width:13%;" />
+        <col style="width:20%;" />
+      </colgroup>
+
+      <!-- 教育訓練及測驗資料 -->
+      <tr><td colspan="6" class="print-section">教育訓練及測驗資料</td></tr>
+      <tr>
+        <td class="label">訓練單位</td>
+        <td class="value" colspan="3" id="cell-trainingUnit"></td>
+        <td class="label-sm">主管機關<br/>備查文號</td>
+        <td class="value" id="cell-authorityDoc"></td>
+      </tr>
+      <tr>
+        <td class="label-sm">測驗職類<br/>代碼及名稱</td>
+        <td class="value" colspan="2" id="cell-testCategory"></td>
+        <td class="label-sm">訓練職類<br/>代碼及名稱</td>
+        <td class="value" colspan="2" id="cell-trainCategory"></td>
+      </tr>
+      <tr>
+        <td class="label">訓練期別</td>
+        <td class="value" id="cell-classNo"></td>
+        <td class="label">訓練日期</td>
+        <td class="value" id="cell-trainPeriod"></td>
+        <td class="label-sm">訓練單位<br/>章戳</td>
+        <td style="height:35pt;"></td>
+      </tr>
+
+      <!-- 應試者基本資料 -->
+      <tr><td colspan="6" class="print-section">應試者基本資料</td></tr>
+      <tr>
+        <td class="label">姓名</td>
+        <td class="value value-em" colspan="2" id="cell-name"></td>
+        <td class="label">出生日期</td>
+        <td class="value" colspan="2" id="cell-birthDate"></td>
+      </tr>
+      <tr>
+        <td class="label-sm">身分證統一<br/>編號</td>
+        <td colspan="2" style="padding:3pt 4pt !important;">
+          <div class="id-grid" id="cell-idGrid"></div>
+        </td>
+        <td class="label">行動電話</td>
+        <td class="value" colspan="2" id="cell-mobilePhone"></td>
+      </tr>
+      <tr>
+        <td class="label">學歷</td>
+        <td colspan="2" style="padding:3pt 4pt !important;">
+          <div class="print-radios" id="cell-education"></div>
+        </td>
+        <td class="label-sm">身心障礙或學習障礙<br/>需申請協助者</td>
+        <td colspan="2" style="font-size:8.5pt; line-height:1.3;">
+          <div class="print-radios" id="cell-disability"></div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- 對齊 TP610 標準版：左側「粘貼照片欄-1」在上、「粘貼照片欄-2」在下；右側電話/地址/同意書 -->
+    <table class="print-table" style="margin-top:-1pt;">
+      <colgroup>
+        <col style="width:16%;" />
+        <col style="width:13%;" />
+        <col style="width:27%;" />
+        <col style="width:13%;" />
+        <col style="width:31%;" />
+      </colgroup>
+      <!-- row 1：粘貼照片欄-1 rowspan=2（較小）+ 電話公/宅 -->
+      <tr>
+        <td class="photo-cell" rowspan="2" style="height:70pt;">
+          <div class="photo-label">粘貼照片欄-1</div>
+          <div class="photo-hint">(請浮貼)</div>
+        </td>
+        <td class="label">電話(公)</td>
+        <td class="value" id="cell-phoneOffice"></td>
+        <td class="label">電話(宅)</td>
+        <td class="value" id="cell-phoneHome"></td>
+      </tr>
+      <tr>
+        <td class="label">緊急連絡人</td>
+        <td class="value" id="cell-emergencyName"></td>
+        <td class="label">電話</td>
+        <td class="value" id="cell-emergencyPhone"></td>
+      </tr>
+      <!-- row 3：粘貼照片欄-2 rowspan=3（較大，含說明）+ 聯絡地址 -->
+      <tr>
+        <td class="photo-cell" rowspan="3" style="height:110pt;">
+          <div class="photo-label">粘貼照片欄-2</div>
+          <div class="photo-hint">(請實貼)</div>
+          <div class="photo-hint" style="margin-top:4pt; font-size:7pt; line-height:1.25; padding:0 3pt;">2 年內 1 吋 (2.54×3.6 公分) 正面半身脫帽照片、不得黏貼以印表機列印之照片、照片背面書明姓名、測驗職類名稱或代碼。</div>
+        </td>
+        <td class="label">聯絡<br/>地址</td>
+        <td colspan="3" class="value">
+          <span class="address-zip" id="cell-zip"></span>
+          <span id="cell-address"></span>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="4" class="consent-text">
+          本表所載之各項資料及所附身分證明文件均經本人詳實核對無誤。身分證件繳交影本與正本相符，如有偽造自負法律責任；另同意勞動部、試務管理機構、測驗試場及訓練單位基於報名作業、統計分析、結業證書發放與相關訊息之必要，就本人所提供之個資得為蒐集、處理及利用。
+          <div class="signature-cell">應試者簽名或蓋章：</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- 身分證正反面影本（獨立 table，避免巢狀被列印截斷） -->
+    <table class="print-table" style="margin-top:-1pt;">
+      <colgroup>
+        <col style="width:50%;" />
+        <col style="width:50%;" />
+      </colgroup>
+      <tr>
+        <td class="id-cell" id="idFrontCell" style="height:145pt;">
+          <div class="id-cell-text">
+            <div style="font-weight:bold; font-size:10pt;">國民身分證、外僑居留證、長期居留證</div>
+            <div style="font-weight:bold; font-size:10pt;">影本粘貼處</div>
+            <div style="font-size:9pt; margin-top:4pt;">(正面，請實貼)</div>
+          </div>
+          <div class="id-cell-image" id="idFrontSlot"></div>
+          <button type="button" class="rotate-btn no-print" data-rotate-target="idFront" aria-label="旋轉正面影本 90 度">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            旋轉
+          </button>
+        </td>
+        <td class="id-cell" id="idBackCell" style="height:145pt;">
+          <div class="id-cell-text">
+            <div style="font-weight:bold; font-size:10pt;">國民身分證、外僑居留證、長期居留證</div>
+            <div style="font-weight:bold; font-size:10pt;">影本粘貼處</div>
+            <div style="font-size:9pt; margin-top:4pt;">(反面，請實貼)</div>
+          </div>
+          <div class="id-cell-image" id="idBackSlot"></div>
+          <button type="button" class="rotate-btn no-print" data-rotate-target="idBack" aria-label="旋轉反面影本 90 度">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            旋轉
+          </button>
+        </td>
+      </tr>
+    </table>
+
+    <!-- 兩層資格審核 -->
+    <table class="print-table" style="margin-top:-1pt;">
+      <colgroup>
+        <col style="width:13%;" />
+        <col style="width:30%;" />
+        <col style="width:13%;" />
+        <col style="width:44%;" />
+      </colgroup>
+      <tr><td colspan="4" class="print-section">※訓練單位資格審核</td></tr>
+      <tr>
+        <td class="label">初審簽章</td>
+        <td style="height:20pt;"></td>
+        <td class="label">複審簽章</td>
+        <td style="height:20pt;"></td>
+      </tr>
+      <tr>
+        <td class="label">審查結果</td>
+        <td colspan="3">□合格 □不合格，原因：</td>
+      </tr>
+
+      <tr><td colspan="4" class="print-section">※測驗試場資格審核</td></tr>
+      <tr>
+        <td class="label">初審簽章</td>
+        <td style="height:20pt;"></td>
+        <td class="label">複審簽章</td>
+        <td style="height:20pt;"></td>
+      </tr>
+      <tr>
+        <td class="label">審查結果</td>
+        <td colspan="3">□合格 □不合格，原因：</td>
+      </tr>
+    </table>
+
+  </div>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+    integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H"
+    crossorigin="anonymous"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"
+    integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/"
+    crossorigin="anonymous"></script>
+  <script src="js/config.js?v=20260416s"></script>
+  <script src="js/utils.js?v=20260416s"></script>
+  <script src="js/print.js?v=20260416s"></script>
+</body>
+</html>

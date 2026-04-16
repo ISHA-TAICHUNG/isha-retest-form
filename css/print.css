@@ -1,0 +1,330 @@
+/**
+ * A4 列印版面 — 完全對齊 eoffice 範本規格
+ * 參考：https://eoffice.isha.org.tw/File/UpDataTool/016/00191/20260301_.html
+ * 規格：寬 540pt、標楷體、border 1pt solid black、灰色區 #D2D2D2
+ */
+
+@page {
+  size: A4 portrait;
+  margin: 0.8cm;
+}
+
+* {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.print-page {
+  width: 19cm; /* A4 寬 21cm - 左右邊界各 1cm */
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 4pt 2pt 4pt 2pt;
+  background: #fff;
+  color: #000;
+  font-family: '標楷體', 'DFKai-SB', 'BiauKai', 'Noto Sans TC', 'PingFang TC', serif;
+  font-size: 10pt;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+
+@media screen {
+  .print-page {
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
+    margin: 16px auto 40px;
+    width: 540pt;
+  }
+}
+
+/* ===== 標題列 table（列印可靠對齊） =====
+ * 用 table 三欄：左空白、中標題、右發票欄。避免絕對定位在列印時錯位。
+ */
+.print-header-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 6pt;
+}
+.print-header-table td {
+  vertical-align: top;
+  padding: 0;
+  border: none;
+}
+.print-header-title {
+  text-align: center;
+  padding: 0 4pt !important;
+}
+.print-header-invoice {
+  border: 1pt solid #000 !important;
+  padding: 3pt 5pt !important;
+  font-family: '標楷體', serif;
+  font-size: 9pt;
+  line-height: 1.35;
+  background: #fff;
+}
+.invoice-title {
+  font-weight: bold;
+  text-align: center;
+  border-bottom: 1pt solid #666;
+  padding-bottom: 1pt;
+  margin-bottom: 2pt;
+  font-size: 9pt;
+}
+.invoice-row { padding: 1pt 0; }
+.invoice-taxid {
+  font-family: 'Times New Roman', serif;
+  letter-spacing: 1.5pt;
+  font-weight: bold;
+  border-bottom: 1pt solid #666;
+  padding: 0 4pt;
+  min-width: 60pt;
+  display: inline-block;
+}
+
+/* ===== 主標題（字級配合左右發票欄預留） ===== */
+.print-title {
+  font-family: '標楷體', serif;
+  font-size: 15pt;
+  font-weight: bold;
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: 0.5pt;
+}
+.print-subtitle {
+  font-family: '標楷體', serif;
+  font-size: 15pt;
+  font-weight: bold;
+  margin: 0 0 4pt;
+  line-height: 1.25;
+  letter-spacing: 0.5pt;
+}
+.print-admit-no {
+  font-family: '標楷體', serif;
+  font-size: 11pt;
+  margin: 2pt 0 3pt;
+  padding: 0 2pt;
+}
+.print-instruction {
+  font-family: '標楷體', serif;
+  text-align: center;
+  font-size: 10pt;
+  font-weight: bold;
+  margin: 3pt 0 4pt;
+}
+
+/* ===== 主表格 ===== */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 0;
+}
+.print-table td {
+  border: 1pt solid #000;
+  padding: 2pt 4pt;
+  vertical-align: middle;
+  font-family: '標楷體', serif;
+  font-size: 10pt;
+  line-height: 1.25;
+  word-wrap: break-word;
+}
+
+/* 灰底區段標題（對齊範本 bgcolor="#D2D2D2"） */
+.print-section {
+  background: #D2D2D2 !important;
+  text-align: center;
+  font-weight: bold;
+  font-size: 11pt;
+  padding: 3pt !important;
+  font-family: '標楷體', serif;
+}
+
+/* 標籤欄 */
+.print-table .label,
+.print-table .label-sm {
+  text-align: center;
+  font-weight: normal;
+  font-family: '標楷體', serif;
+}
+.print-table .label { font-size: 11pt; }
+.print-table .label-sm { font-size: 10pt; line-height: 1.2; }
+
+/* 重要欄位加大 */
+.print-table .value-em {
+  font-weight: bold;
+  font-size: 12pt;
+  letter-spacing: 0.5pt;
+}
+.print-table .value { font-size: 11pt; }
+
+/* 身分證方格 */
+.id-grid {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.id-grid-cell {
+  width: 14pt;
+  height: 22pt;
+  border: 1pt solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Times New Roman', serif;
+  font-size: 12pt;
+  font-weight: bold;
+  margin-left: -1pt;
+}
+.id-grid-cell:first-child { margin-left: 0; }
+
+/* radio 列 */
+.print-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1pt 8pt;
+  font-size: 10pt;
+  line-height: 1.4;
+  font-family: '標楷體', serif;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+.print-radios span {
+  /* 短選項不換行；長說明文字允許斷行，避免溢出 */
+  white-space: normal;
+  word-break: break-all;
+}
+
+/* 照片欄 */
+.photo-cell {
+  text-align: center;
+  vertical-align: middle;
+  background: #fafafa;
+  padding: 3pt !important;
+  font-family: '標楷體', serif;
+}
+.photo-label {
+  font-size: 10pt;
+  font-weight: bold;
+  margin-bottom: 2pt;
+}
+.photo-hint {
+  font-size: 9pt;
+  color: #555;
+  white-space: pre-line;
+  line-height: 1.3;
+}
+
+/* 身分證影本欄：cell 高度調整為接近身分證比例（1.58:1）以減少裁切 */
+.id-cell {
+  height: 145pt; /* 寬 95mm × 145pt(54.7mm) ≈ 1.74:1，已接近身分證 1.58:1 */
+  text-align: center;
+  vertical-align: middle;
+  background: #fafafa;
+  padding: 0 !important;
+  overflow: hidden;
+  font-family: '標楷體', serif;
+  position: relative;
+}
+
+/* 旋轉按鈕（僅螢幕可見，列印時隱藏） */
+.rotate-btn {
+  position: absolute;
+  top: 4pt;
+  right: 4pt;
+  display: none; /* 預設不顯示，只有有圖時才顯示 */
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.85);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  transition: background 0.15s, transform 0.15s;
+  z-index: 10;
+}
+.rotate-btn:hover { background: #0369A1; }
+.rotate-btn:active { transform: scale(0.95); }
+.id-cell.has-image .rotate-btn { display: inline-flex; }
+@media print {
+  .rotate-btn { display: none !important; }
+}
+.id-cell-text { padding: 8pt 4pt; }
+.id-cell-image { display: none; }
+.id-cell.has-image .id-cell-text { display: none; }
+.id-cell.has-image .id-cell-image {
+  /* 填滿模式：image 填滿 cell 145pt 高、100% 寬，超出部分由 overflow 裁掉 */
+  display: block;
+  width: 100%;
+  height: 145pt;
+  overflow: hidden;
+  line-height: 0;
+  font-size: 0;
+  background: #fff;
+}
+.id-cell.has-image .id-cell-image img {
+  /* object-fit: cover → 圖片自動填滿 cell、保持比例、溢出裁切（主體通常在中央） */
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+}
+
+/* 同意書 */
+.consent-text {
+  font-size: 10pt;
+  line-height: 1.4;
+  text-align: justify;
+  padding: 6pt 8pt !important;
+  font-family: '標楷體', serif;
+}
+
+.signature-cell {
+  text-align: right;
+  font-weight: bold;
+  font-size: 11pt;
+  /* 右側保留 180pt (約 6.3cm) 讓使用者有足夠空間簽名 */
+  padding: 14pt 180pt 2pt 0;
+  font-family: '標楷體', serif;
+}
+
+/* 聯絡地址 */
+.address-zip {
+  font-family: 'Times New Roman', serif;
+  font-size: 11pt;
+  letter-spacing: 1pt;
+  margin-right: 6pt;
+}
+
+/* ===== 螢幕用工具條（列印時隱藏） ===== */
+.print-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f0f4f8;
+  padding: 10pt;
+  border-bottom: 1pt solid #ccc;
+  display: flex;
+  gap: 10pt;
+  justify-content: center;
+  align-items: center;
+}
+
+@media print {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .no-print, .print-toolbar, .app-header, .submit-status { display: none !important; }
+  .container { padding: 0 !important; max-width: none !important; }
+  .print-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+}

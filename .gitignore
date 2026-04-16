@@ -1,0 +1,32 @@
+# 清冊資料（含應試者個資，永不提交）
+data/
+*.xlsx
+!docs/*.xlsx
+
+# Excel 暫存
+~$*
+
+# 系統檔
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node（如果未來引入工具）
+node_modules/
+
+# Log
+*.log
+
+# Claude review state
+.claude_review_state.json
+
+# 官方範本不入 git（可能含範例個資）
+TP610*.doc
+完整的範本.pdf
+屋頂*.doc
+docs/附件四*.PDF

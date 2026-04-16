@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理職類測驗補考報名表 — 身分證查詢</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0F172A" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="css/main.css?v=20260416s" />
+</head>
+<body>
+  <a href="#main" class="skip-link">跳到主要內容</a>
+
+  <header class="app-header" role="banner">
+    <div class="app-header-inner">
+      <div class="app-header-badge" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+      </div>
+      <div>
+        <h1>管理職類結訓電腦測驗補考報名表</h1>
+        <div class="subtitle">社團法人中華民國工業安全衛生協會附設台中職業訓練中心</div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="container container-narrow" role="main">
+
+    <!-- 步驟導引 -->
+    <ol class="steps" aria-label="操作流程">
+      <li class="step active"><span class="step-num">1</span>輸入身分證</li>
+      <li class="step-divider" aria-hidden="true"></li>
+      <li class="step"><span class="step-num">2</span>確認資料</li>
+      <li class="step-divider" aria-hidden="true"></li>
+      <li class="step"><span class="step-num">3</span>送出</li>
+    </ol>
+
+    <!-- 主查詢區 -->
+    <section class="card card-hero" aria-labelledby="search-title">
+      <h2 id="search-title" class="card-title">輸入您的身分證字號</h2>
+      <p class="card-subtitle">系統將自動帶出您的補考報名資料。可在下一步微調聯絡資訊、上傳身分證影本，然後送出報名至訓練單位。</p>
+
+      <form class="hero-search" id="searchForm" onsubmit="event.preventDefault(); document.getElementById('searchBtn').click();">
+        <label for="idInput" class="hero-search-label">身分證統一編號</label>
+        <div class="hero-search-row">
+          <input
+            type="text"
+            id="idInput"
+            placeholder="A123456789"
+            maxlength="10"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            inputmode="text"
+            aria-describedby="idHelp"
+            autofocus
+          />
+          <button class="btn btn-large" id="searchBtn" type="submit" aria-label="查詢報名資料">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            查詢
+          </button>
+        </div>
+        <p id="idHelp" class="hero-search-help">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          大小寫不分，共 10 碼（1 個英文字母 + 9 個數字）
+        </p>
+      </form>
+
+      <div id="status" class="status hidden" role="status" aria-live="polite"></div>
+
+      <div id="candidatesBlock" class="hidden" style="margin-top: var(--sp-5);">
+        <h3 class="section-heading">找到多筆紀錄，請選擇要報名的梯次：</h3>
+        <div class="candidate-list" id="candidateList"></div>
+      </div>
+    </section>
+
+    <!-- 使用說明 -->
+    <section class="card" aria-labelledby="howto-title">
+      <h3 id="howto-title" class="section-heading">使用說明</h3>
+      <ol class="help-list">
+        <li>輸入身分證字號後按「查詢」</li>
+        <li>系統自動從報名清冊帶出您的補考資料，跳轉至報名表編輯畫面</li>
+        <li>確認或微調聯絡資訊、學歷、身障申請、發票開立、應考月份等欄位</li>
+        <li>上傳身分證正反面（手機可直接拍照，系統會自動轉為橫式）</li>
+        <li>進入預覽畫面確認無誤後，點「送出報名」即自動將資料上傳至訓練單位</li>
+        <li>完成後請加入官方 LINE 帳號，接收測驗後續通知</li>
+      </ol>
+    </section>
+  </main>
+
+  <script src="js/config.js?v=20260416s"></script>
+  <script src="js/utils.js?v=20260416s"></script>
+  <script src="js/api.js?v=20260416s"></script>
+  <script src="js/index.js?v=20260416s"></script>
+</body>
+</html>
