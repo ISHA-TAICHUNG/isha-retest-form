@@ -265,13 +265,18 @@
   background: #fff;
 }
 .id-cell.has-image .id-cell-image img {
-  /* object-fit: contain → 完整顯示整張照片、保持比例、不裁切任何部分
+  /* 預設模式：contain → 完整顯示整張照片、保持比例、不裁切任何部分
      比例不合時周圍留白（比失真或裁切邊角可接受） */
   width: 100%;
   height: 100%;
   object-fit: contain;
   object-position: center center;
   display: block;
+}
+/* 填滿模式：使用者點過「旋轉」後（通常為原本直拍） → 改成 cover 填滿方格，
+   中央裁切少量邊緣，視覺上更貼合身分證擺放。 */
+.id-cell.has-image.filled .id-cell-image img {
+  object-fit: cover;
 }
 
 /* 同意書 */

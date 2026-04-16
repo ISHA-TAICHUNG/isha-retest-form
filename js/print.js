@@ -97,9 +97,10 @@
       { val: 'yes', label: '是(請於報名表後方檢附身心障礙手冊或學習障礙證明影本，若未檢附者，視同一般應試者，不予延長測驗時間20分鐘。)' },
     ], payload.disability);
 
-    // 身分證正反面影本
-    renderIdImage('idFrontCell', 'idFrontSlot', payload.images && payload.images.idFront);
-    renderIdImage('idBackCell', 'idBackSlot', payload.images && payload.images.idBack);
+    // 身分證正反面影本（filled 狀態：旋轉過的影本改為填滿方格）
+    const fills = payload.imageFills || {};
+    renderIdImage('idFrontCell', 'idFrontSlot', payload.images && payload.images.idFront, !!fills.idFront);
+    renderIdImage('idBackCell', 'idBackSlot', payload.images && payload.images.idBack, !!fills.idBack);
 
   }
 
@@ -137,7 +138,7 @@
     });
   }
 
-  function renderIdImage(cellId, slotId, dataUrl) {
+  function renderIdImage(cellId, slotId, dataUrl, filled) {
     const cell = $(cellId);
     const slot = $(slotId);
     if (!cell || !slot) return;
@@ -148,8 +149,12 @@
       img.alt = '';
       slot.appendChild(img);
       cell.classList.add('has-image');
+      // filled：旋轉過的影本改為 cover（填滿方格），未旋轉者維持 contain（完整顯示）
+      if (filled) cell.classList.add('filled');
+      else cell.classList.remove('filled');
     } else {
       cell.classList.remove('has-image');
+      cell.classList.remove('filled');
     }
   }
 
@@ -334,10 +339,14 @@
     try {
       const rotated = await rotateImageDataUrl(payload.images[target]);
       payload.images[target] = rotated;
+      // 標記此影本已被使用者旋轉過 → 改用「填滿方格」模式消除留白
+      // （通常表示原本是直立照片，旋轉後需要填滿）
+      if (!payload.imageFills) payload.imageFills = {};
+      payload.imageFills[target] = true;
       sessionStorage.setItem(FORM_KEY, JSON.stringify(payload));
       const cellId = target === 'idFront' ? 'idFrontCell' : 'idBackCell';
       const slotId = target === 'idFront' ? 'idFrontSlot' : 'idBackSlot';
-      renderIdImage(cellId, slotId, rotated);
+      renderIdImage(cellId, slotId, rotated, true);
     } catch (err) {
       console.error(err);
       alert('旋轉失敗：' + err.message);
