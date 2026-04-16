@@ -301,6 +301,11 @@
     if (!payload.idNumber) errors.push('身分證統一編號');
     if (!payload.mobilePhone) errors.push('行動電話');
     if (!payload.address) errors.push('聯絡地址');
+    if (!payload.examMonth) errors.push('應考月份');
+    // 公司發票需填統編
+    if (payload.invoiceType === 'company' && !payload.invoiceTaxId) {
+      errors.push('統一編號（公司發票必填）');
+    }
     return errors;
   }
 
