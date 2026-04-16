@@ -84,6 +84,21 @@
     $('trainStart').value = record.trainStart || '';
     $('trainEnd').value = record.trainEnd || '';
 
+    // 自動預填應考月份：結訓月份 + 1（通常考試在結訓後隔月）
+    // trainEnd 格式為民國 YYYMMDD（7 碼）
+    const examMonthEl = $('examMonth');
+    if (examMonthEl && !examMonthEl.value && record.trainEnd) {
+      const m = String(record.trainEnd).match(/^\d{3}(\d{2})/);
+      if (m) {
+        const nextMonth = ((parseInt(m[1], 10) % 12) + 1).toString();
+        if (examMonthEl.querySelector(`option[value="${nextMonth}"]`)) {
+          examMonthEl.value = nextMonth;
+          examMonthEl.classList.add('prefilled');
+          examMonthEl.addEventListener('change', () => examMonthEl.classList.remove('prefilled'), { once: true });
+        }
+      }
+    }
+
     // 訓練職類預設與測驗職類相同
     const jobMatch = window.getJobCategoryByCode(record.jobCode);
     const trainCatText = record.jobCode
@@ -295,18 +310,32 @@
     };
   }
 
+  // 欄位標籤 → DOM id 對照（驗證失敗時可 focus 至對應欄位）
+  const FIELD_MAP = [
+    { key: 'name',           label: '姓名',               id: 'name' },
+    { key: 'idNumber',       label: '身分證統一編號',      id: 'idNumber' },
+    { key: 'mobilePhone',    label: '行動電話',            id: 'mobilePhone' },
+    { key: 'address',        label: '聯絡地址',            id: 'address' },
+    { key: 'examMonth',      label: '應考月份',            id: 'examMonth' },
+    { key: 'invoiceTaxId',   label: '統一編號（公司發票必填）', id: 'invoiceTaxId' },
+  ];
+
   function validateRequired(payload) {
     const errors = [];
-    if (!payload.name) errors.push('姓名');
-    if (!payload.idNumber) errors.push('身分證統一編號');
-    if (!payload.mobilePhone) errors.push('行動電話');
-    if (!payload.address) errors.push('聯絡地址');
-    if (!payload.examMonth) errors.push('應考月份');
-    // 公司發票需填統編
+    const firstInvalidId = { value: null };
+    const add = (label, id) => {
+      errors.push(label);
+      if (!firstInvalidId.value) firstInvalidId.value = id;
+    };
+    if (!payload.name)        add('姓名', 'name');
+    if (!payload.idNumber)    add('身分證統一編號', 'idNumber');
+    if (!payload.mobilePhone) add('行動電話', 'mobilePhone');
+    if (!payload.address)     add('聯絡地址', 'address');
+    if (!payload.examMonth)   add('應考月份', 'examMonth');
     if (payload.invoiceType === 'company' && !payload.invoiceTaxId) {
-      errors.push('統一編號（公司發票必填）');
+      add('統一編號（公司發票必填）', 'invoiceTaxId');
     }
-    return errors;
+    return { errors, firstInvalidId: firstInvalidId.value };
   }
 
   // ============ 事件繫結 ============
@@ -317,9 +346,20 @@
 
     $('previewBtn').addEventListener('click', () => {
       const payload = collectPayload();
-      const errs = validateRequired(payload);
-      if (errs.length > 0) {
-        alert('請完成必填欄位：\n' + errs.join('、'));
+      const { errors, firstInvalidId } = validateRequired(payload);
+      if (errors.length > 0) {
+        alert('請完成必填欄位：\n' + errors.join('、'));
+        // 自動捲動至第一個未填欄位並 focus，減少使用者尋找時間
+        if (firstInvalidId) {
+          const el = $(firstInvalidId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 延遲 focus 避免捲動被打斷
+            setTimeout(() => { try { el.focus(); } catch (e) {} }, 450);
+            el.classList.add('invalid-flash');
+            setTimeout(() => el.classList.remove('invalid-flash'), 1800);
+          }
+        }
         return;
       }
 

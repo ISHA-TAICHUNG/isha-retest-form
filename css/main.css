@@ -488,9 +488,22 @@ a:focus-visible {
 .form-field textarea:focus-visible {
   outline: 3px solid var(--color-accent);
 }
-.form-field input.prefilled {
+.form-field input.prefilled,
+.form-field select.prefilled,
+.form-field textarea.prefilled {
   background: linear-gradient(180deg, #FEF9E7 0%, #FFFEF7 100%);
   border-color: #FCD34D;
+}
+/* 驗證失敗時的閃爍提示（紅色框） */
+.invalid-flash,
+.form-field .invalid-flash {
+  animation: invalidFlash 1.8s ease-out;
+  border-color: #DC2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+@keyframes invalidFlash {
+  0%, 30%   { border-color: #DC2626; box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.28); }
+  100%      { border-color: inherit; box-shadow: none; }
 }
 .form-field .hint {
   font-size: var(--fs-xs);
