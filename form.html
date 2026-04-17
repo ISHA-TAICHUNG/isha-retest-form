@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/main.css?v=20260416x" />
+  <link rel="stylesheet" href="css/main.css?v=20260416y" />
 </head>
 <body>
   <a href="#main" class="skip-link">跳到主要內容</a>
@@ -37,63 +37,60 @@
       <li class="step"><span class="step-num">3</span>送出</li>
     </ol>
 
-    <!-- 教育訓練及測驗資料 -->
+    <!-- 教育訓練及測驗資料（全部來自清冊，鎖定不可修改） -->
     <section class="card" aria-labelledby="train-title">
       <h2 id="train-title" class="section-heading">教育訓練及測驗資料</h2>
-      <p class="muted" style="margin: -8px 0 var(--sp-4);">黃色背景欄位為自動帶入，可手動修改</p>
+      <p class="muted" style="margin: -8px 0 var(--sp-4);">以下欄位由訓練單位清冊統一帶入，若有錯誤請聯繫訓練單位修正。</p>
 
       <div class="form-grid">
         <div class="form-field full">
           <label for="trainingUnit">訓練單位</label>
-          <input type="text" id="trainingUnit" />
-          <span class="hint">系統預設值，可手動修改</span>
+          <input type="text" id="trainingUnit" readonly tabindex="-1" />
         </div>
 
         <div class="form-field">
           <label for="authorityDoc">主管機關備查文號</label>
-          <input type="text" id="authorityDoc" />
+          <input type="text" id="authorityDoc" readonly tabindex="-1" />
         </div>
 
         <div class="form-field">
           <label for="authority">主管機關</label>
-          <input type="text" id="authority" />
+          <input type="text" id="authority" readonly tabindex="-1" />
         </div>
 
         <div class="form-field">
           <label for="jobCategory">測驗職類代碼及名稱</label>
-          <select id="jobCategory"></select>
-          <span class="hint">共 42 項</span>
+          <input type="text" id="jobCategory" readonly tabindex="-1" data-code="" />
         </div>
 
         <div class="form-field">
           <label for="trainCategory">訓練職類代碼及名稱</label>
-          <input type="text" id="trainCategory" />
-          <span class="hint">通常與測驗職類相同，可手動修改</span>
+          <input type="text" id="trainCategory" readonly tabindex="-1" />
         </div>
 
         <div class="form-field">
           <label for="classNo">訓練期別</label>
-          <input type="text" id="classNo" />
+          <input type="text" id="classNo" readonly tabindex="-1" />
         </div>
 
         <div class="form-field">
           <label for="year">測驗年度（民國）</label>
-          <input type="text" id="year" />
+          <input type="text" id="year" readonly tabindex="-1" />
         </div>
 
         <div class="form-field">
           <label for="batch">梯次</label>
-          <input type="text" id="batch" />
+          <input type="text" id="batch" readonly tabindex="-1" />
         </div>
 
         <div class="form-field">
           <label for="trainStart">訓練起日（民國 YYYMMDD）</label>
-          <input type="text" id="trainStart" placeholder="例 1141210" />
+          <input type="text" id="trainStart" readonly tabindex="-1" />
         </div>
 
         <div class="form-field">
           <label for="trainEnd">訓練迄日（民國 YYYMMDD）</label>
-          <input type="text" id="trainEnd" placeholder="例 1141212" />
+          <input type="text" id="trainEnd" readonly tabindex="-1" />
         </div>
       </div>
     </section>
@@ -177,9 +174,9 @@
       </div>
     </section>
 
-    <!-- 發票開立 + 應考月份 -->
+    <!-- 發票開立 + 考場 + 應考月份 -->
     <section class="card" aria-labelledby="invoice-title">
-      <h2 id="invoice-title" class="section-heading">發票開立 / 應考月份</h2>
+      <h2 id="invoice-title" class="section-heading">發票開立 / 考場 / 應考月份</h2>
       <div class="form-grid">
         <div class="form-field full">
           <label>發票類型</label>
@@ -191,6 +188,14 @@
         <div class="form-field">
           <label for="invoiceTaxId">統一編號（僅公司發票需填）</label>
           <input type="text" id="invoiceTaxId" maxlength="8" inputmode="numeric" placeholder="8 位數字" style="font-family:var(--font-mono); letter-spacing:2px;" />
+        </div>
+        <div class="form-field">
+          <label for="examVenue">考場 <span class="required" aria-hidden="true">*</span></label>
+          <select id="examVenue" required aria-required="true">
+            <option value="">請選擇</option>
+            <option value="忠明">忠明</option>
+            <option value="龍井">龍井</option>
+          </select>
         </div>
         <div class="form-field">
           <label for="examMonth">應考月份 <span class="required" aria-hidden="true">*</span></label>
@@ -217,7 +222,7 @@
     <!-- 照片上傳 -->
     <section class="card" aria-labelledby="photo-title">
       <h2 id="photo-title" class="section-heading">身分證影本上傳</h2>
-      <p class="muted" style="margin: -8px 0 var(--sp-5);">手機開啟時自動使用相機拍攝；電腦則可選擇檔案。上傳後會自動轉為橫式並嵌入報名表。<br />1 吋大頭照請於訓練單位列印實體報名表後，由應試者本人親自黏貼。</p>
+      <p class="muted" style="margin: -8px 0 var(--sp-5);">點擊下方區塊直接開相機拍攝，系統會自動轉為橫式。拍完可點圖片放大檢查、不清楚可按「旋轉」調整方向。<br />1 吋大頭照請於訓練單位列印實體報名表後，由應試者本人親自黏貼。</p>
 
       <div class="form-grid">
         <div class="upload-slot" data-key="idFront">
@@ -228,11 +233,15 @@
             <div class="upload-preview">
               <span class="upload-placeholder">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4"/></svg>
-                點此上傳 / 拍照
+                點此拍攝
               </span>
             </div>
           </label>
-          <button type="button" class="btn btn-clear" data-clear="idFront">清除</button>
+          <div class="upload-actions">
+            <button type="button" class="upload-action-btn" data-rotate="idFront" aria-label="旋轉正面影本 90 度">↻ 旋轉</button>
+            <button type="button" class="upload-action-btn" data-zoom="idFront" aria-label="放大檢視正面影本">🔍 放大檢視</button>
+            <button type="button" class="btn btn-clear" data-clear="idFront">清除重拍</button>
+          </div>
         </div>
 
         <div class="upload-slot" data-key="idBack">
@@ -243,11 +252,15 @@
             <div class="upload-preview">
               <span class="upload-placeholder">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h7"/></svg>
-                點此上傳 / 拍照
+                點此拍攝
               </span>
             </div>
           </label>
-          <button type="button" class="btn btn-clear" data-clear="idBack">清除</button>
+          <div class="upload-actions">
+            <button type="button" class="upload-action-btn" data-rotate="idBack" aria-label="旋轉反面影本 90 度">↻ 旋轉</button>
+            <button type="button" class="upload-action-btn" data-zoom="idBack" aria-label="放大檢視反面影本">🔍 放大檢視</button>
+            <button type="button" class="btn btn-clear" data-clear="idBack">清除重拍</button>
+          </div>
         </div>
       </div>
     </section>
@@ -265,9 +278,10 @@
     </div>
   </main>
 
-  <script src="js/config.js?v=20260416x"></script>
-  <script src="js/utils.js?v=20260416x"></script>
-  <script src="js/job-categories.js?v=20260416x"></script>
-  <script src="js/form.js?v=20260416x"></script>
+  <script src="js/config.js?v=20260416y"></script>
+  <script src="js/utils.js?v=20260416y"></script>
+  <script src="js/job-categories.js?v=20260416y"></script>
+  <script src="js/image-viewer.js?v=20260416y"></script>
+  <script src="js/form.js?v=20260416y"></script>
 </body>
 </html>

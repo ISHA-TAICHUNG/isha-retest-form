@@ -494,6 +494,23 @@ a:focus-visible {
   background: linear-gradient(180deg, #FEF9E7 0%, #FFFEF7 100%);
   border-color: #FCD34D;
 }
+/* 唯讀（鎖定）欄位：淡灰底 + 不可編輯游標，即使沒有 prefilled 也能識別 */
+.form-field input[readonly],
+.form-field textarea[readonly] {
+  background: #F1F5F9;
+  color: #1E293B;
+  cursor: not-allowed;
+  border-color: #CBD5E1;
+}
+.form-field input[readonly].prefilled {
+  background: linear-gradient(180deg, #FFF8D6 0%, #FFFDEF 100%);
+  color: #1E293B;
+  border-color: #FBBF24;
+}
+.form-field input[readonly]:focus {
+  outline: none;
+  box-shadow: none;
+}
 /* 驗證失敗時的閃爍提示（紅色框） */
 .invalid-flash,
 .form-field .invalid-flash {
@@ -731,6 +748,100 @@ a:focus-visible {
   background: var(--color-destructive-bg);
 }
 .upload-slot.has-image .btn-clear { display: inline-flex; }
+
+/* upload 區的操作按鈕列（旋轉 / 放大 / 清除） */
+.upload-actions {
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.upload-slot.has-image .upload-actions { display: flex; }
+.upload-action-btn {
+  font-size: var(--fs-xs);
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-strong);
+  background: #fff;
+  color: var(--color-primary);
+  border-radius: var(--rd-sm);
+  cursor: pointer;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.upload-action-btn:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+.upload-action-btn:active { transform: scale(0.97); }
+.upload-slot.has-image .btn-clear { align-self: auto; }
+
+/* 點擊預覽圖放大的鼠標提示 */
+.upload-slot.has-image .upload-preview img {
+  cursor: zoom-in;
+}
+
+/* ========== Image Viewer (lightbox) ========== */
+.image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.94);
+  display: flex;
+  flex-direction: column;
+}
+.image-viewer.hidden { display: none; }
+.iv-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.iv-btn {
+  min-width: 46px;
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.iv-btn:hover { background: rgba(255, 255, 255, 0.24); }
+.iv-btn:active { transform: scale(0.96); }
+.iv-close { margin-left: 10px; background: rgba(220, 38, 38, 0.6); border-color: rgba(220, 38, 38, 0.8); }
+.iv-close:hover { background: rgba(220, 38, 38, 0.85); }
+.iv-scroll {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pinch-zoom;
+}
+.iv-img {
+  max-width: 100%;
+  max-height: 100%;
+  transform-origin: center center;
+  transition: transform 0.12s ease-out;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.iv-hint {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  padding: 6px 12px 10px;
+}
 
 /* ========== Roster Status Mini ========== */
 .roster-meta-card {

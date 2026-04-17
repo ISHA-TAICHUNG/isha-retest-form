@@ -75,6 +75,7 @@
     if (ip) ip.textContent = invoiceType === 'personal' ? '■' : '□';
     if (ic) ic.textContent = invoiceType === 'company' ? '■' : '□';
     setText('invoiceTaxId', payload.invoiceTaxId || '');
+    setText('invoiceExamVenue', payload.examVenue || '_____');
     setText('invoiceExamMonth', payload.examMonth ? payload.examMonth + ' 月' : '_____');
 
     setText('cell-zip', formatZipDigits(payload.zipCode));
@@ -361,11 +362,35 @@
   const submitBtn = $('submitBtn');
   if (submitBtn) submitBtn.addEventListener('click', submitToCloud);
 
-  document.querySelectorAll('.rotate-btn').forEach((btn) => {
+  document.querySelectorAll('[data-rotate-target]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       const target = btn.dataset.rotateTarget;
       if (target) handleRotate(target, btn);
+    });
+  });
+
+  // 放大檢視按鈕
+  document.querySelectorAll('[data-zoom-target]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = btn.dataset.zoomTarget;
+      const dataUrl = payload.images && payload.images[target];
+      if (dataUrl && window.openImageViewer) window.openImageViewer(dataUrl);
+    });
+  });
+
+  // 點影本圖片也能開啟放大檢視（手機友好）
+  ['idFrontCell', 'idBackCell'].forEach((cellId) => {
+    const cell = document.getElementById(cellId);
+    if (!cell) return;
+    cell.addEventListener('click', (e) => {
+      if (e.target && e.target.tagName === 'IMG') {
+        e.preventDefault();
+        const key = cellId === 'idFrontCell' ? 'idFront' : 'idBack';
+        const dataUrl = payload.images && payload.images[key];
+        if (dataUrl && window.openImageViewer) window.openImageViewer(dataUrl);
+      }
     });
   });
 

@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/main.css?v=20260416x" />
-  <link rel="stylesheet" href="css/print.css?v=20260416x" />
+  <link rel="stylesheet" href="css/main.css?v=20260416y" />
+  <link rel="stylesheet" href="css/print.css?v=20260416y" />
 </head>
 <body>
   <div class="print-toolbar no-print">
@@ -48,6 +48,9 @@
             <span id="invoiceCompany">□</span> 統編：<span id="invoiceTaxId" class="invoice-taxid"></span>
           </div>
           <div class="invoice-row" style="border-top:1pt dashed #aaa; margin-top:3pt; padding-top:3pt;">
+            考場：<span id="invoiceExamVenue" style="font-weight:bold;"></span>
+          </div>
+          <div class="invoice-row">
             應考月份：<span id="invoiceExamMonth" style="font-weight:bold;"></span>
           </div>
         </td>
@@ -179,10 +182,13 @@
             <div style="font-size:9pt; margin-top:4pt;">(正面，請實貼)</div>
           </div>
           <div class="id-cell-image" id="idFrontSlot"></div>
-          <button type="button" class="rotate-btn no-print" data-rotate-target="idFront" aria-label="旋轉正面影本 90 度">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            旋轉
-          </button>
+          <div class="id-cell-actions no-print">
+            <button type="button" class="rotate-btn" data-zoom-target="idFront" aria-label="放大檢視正面影本">🔍 放大</button>
+            <button type="button" class="rotate-btn" data-rotate-target="idFront" aria-label="旋轉正面影本 90 度">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              旋轉
+            </button>
+          </div>
         </td>
         <td class="id-cell" id="idBackCell" style="height:145pt;">
           <div class="id-cell-text">
@@ -191,10 +197,13 @@
             <div style="font-size:9pt; margin-top:4pt;">(反面，請實貼)</div>
           </div>
           <div class="id-cell-image" id="idBackSlot"></div>
-          <button type="button" class="rotate-btn no-print" data-rotate-target="idBack" aria-label="旋轉反面影本 90 度">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            旋轉
-          </button>
+          <div class="id-cell-actions no-print">
+            <button type="button" class="rotate-btn" data-zoom-target="idBack" aria-label="放大檢視反面影本">🔍 放大</button>
+            <button type="button" class="rotate-btn" data-rotate-target="idBack" aria-label="旋轉反面影本 90 度">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              旋轉
+            </button>
+          </div>
         </td>
       </tr>
     </table>
@@ -242,8 +251,9 @@
     src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"
     integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/"
     crossorigin="anonymous"></script>
-  <script src="js/config.js?v=20260416x"></script>
-  <script src="js/utils.js?v=20260416x"></script>
-  <script src="js/print.js?v=20260416x"></script>
+  <script src="js/config.js?v=20260416y"></script>
+  <script src="js/utils.js?v=20260416y"></script>
+  <script src="js/image-viewer.js?v=20260416y"></script>
+  <script src="js/print.js?v=20260416y"></script>
 </body>
 </html>

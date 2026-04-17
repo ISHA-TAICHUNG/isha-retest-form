@@ -21,56 +21,15 @@
     return;
   }
 
-  // ============ 職類下拉初始化 ============
-  function initJobCategorySelect() {
-    const sel = $('jobCategory');
-    sel.replaceChildren();
-
-    // 預設選項：清冊上的職類（即使不在內建清單中，也加進去）
-    const built = window.JOB_CATEGORIES.slice();
-    const exists = built.some((j) => j.code === record.jobCode);
-    if (!exists && record.jobCode) {
-      built.unshift({
-        code: record.jobCode,
-        name: record.jobName || '(清冊載入)',
-        group: '— 來自清冊 —',
-      });
-    }
-
-    // 依分類群組
-    const groups = {};
-    built.forEach((j) => {
-      const g = j.group || '其他';
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(j);
-    });
-
-    Object.keys(groups).forEach((g) => {
-      const og = document.createElement('optgroup');
-      og.label = g;
-      groups[g].forEach((j) => {
-        const opt = document.createElement('option');
-        opt.value = j.code;
-        opt.textContent = `${j.code}　${j.name}`;
-        og.appendChild(opt);
-      });
-      sel.appendChild(og);
-    });
-
-    sel.value = record.jobCode || '';
-
-    // 測驗職類變動時，自動同步訓練職類
-    function syncTrainCategory() {
-      const tc = $('trainCategory');
-      if (!tc) return;
-      const code = sel.value;
-      const match = window.getJobCategoryByCode(code);
-      const text = code ? `${code}　${match ? match.name : ''}` : '';
-      tc.value = text;
-      tc.classList.add('prefilled');
-    }
-    sel.addEventListener('change', syncTrainCategory);
-    sel.addEventListener('input', syncTrainCategory);
+  // ============ 職類欄位填入（鎖定為唯讀） ============
+  function fillJobCategory() {
+    const el = $('jobCategory');
+    if (!el) return;
+    const match = window.getJobCategoryByCode(record.jobCode);
+    const name = match ? match.name : (record.jobName || '');
+    el.value = record.jobCode ? `${record.jobCode}　${name}`.trim() : '';
+    el.dataset.code = record.jobCode || '';
+    el.dataset.name = name;
   }
 
   // ============ 填入欄位 ============
@@ -99,10 +58,10 @@
       }
     }
 
-    // 訓練職類預設與測驗職類相同
+    // 訓練職類預設與測驗職類相同（鎖定唯讀）
     const jobMatch = window.getJobCategoryByCode(record.jobCode);
     const trainCatText = record.jobCode
-      ? `${record.jobCode}${jobMatch ? jobMatch.name : (record.jobName || '')}`
+      ? `${record.jobCode}　${jobMatch ? jobMatch.name : (record.jobName || '')}`.trim()
       : (record.jobName || '');
     if ($('trainCategory')) $('trainCategory').value = trainCatText;
 
@@ -119,14 +78,22 @@
     if (radio) radio.checked = true;
 
     // 帶入後標示為「自動填入」黃色背景
-    [
-      'trainingUnit', 'authority', 'authorityDoc', 'classNo', 'year', 'batch',
-      'trainStart', 'trainEnd', 'name', 'idNumber', 'birthDate',
-      'mobilePhone', 'zipCode', 'address',
-    ].forEach((id) => {
+    // - 訓練資料欄位為鎖定狀態，永遠保留黃底
+    // - 應試者個資欄位若使用者手動修改則移除標記
+    const lockedIds = [
+      'trainingUnit', 'authority', 'authorityDoc', 'jobCategory', 'trainCategory',
+      'classNo', 'year', 'batch', 'trainStart', 'trainEnd',
+    ];
+    const editableIds = [
+      'name', 'idNumber', 'birthDate', 'mobilePhone', 'zipCode', 'address',
+    ];
+    lockedIds.forEach((id) => {
       const el = $(id);
       if (el && el.value) el.classList.add('prefilled');
-      // 使用者修改後移除標記
+    });
+    editableIds.forEach((id) => {
+      const el = $(id);
+      if (el && el.value) el.classList.add('prefilled');
       if (el) el.addEventListener('input', () => el.classList.remove('prefilled'));
     });
   }
@@ -220,11 +187,80 @@
         preview.replaceChildren();
         const ph = document.createElement('span');
         ph.className = 'upload-placeholder';
-        ph.textContent = '點此上傳 / 拍照';
+        ph.textContent = '點此拍攝';
         preview.appendChild(ph);
         slot.querySelector('input[type="file"]').value = '';
         saveImageToPayload(target, null);
       });
+    });
+
+    // 旋轉按鈕：就地旋轉 90° 順時針
+    document.querySelectorAll('[data-rotate]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const target = btn.dataset.rotate;
+        const current = imageStore[target];
+        if (!current) return;
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = '旋轉中…';
+        try {
+          const rotated = await rotateDataUrl(current);
+          imageStore[target] = rotated;
+          const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
+          renderPreview(slot, rotated);
+        } catch (err) {
+          console.error(err);
+          alert('旋轉失敗：' + err.message);
+        } finally {
+          btn.textContent = origText;
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // 放大檢視按鈕：開啟 lightbox
+    document.querySelectorAll('[data-zoom]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.zoom;
+        const dataUrl = imageStore[target];
+        if (dataUrl && window.openImageViewer) window.openImageViewer(dataUrl);
+      });
+    });
+
+    // 點預覽圖也能放大（方便手機操作）
+    document.querySelectorAll('.upload-slot').forEach((slot) => {
+      slot.addEventListener('click', (e) => {
+        // 只有點在 img 上且有圖才觸發；避免與 label 點擊重新上傳衝突
+        const tgt = e.target;
+        if (tgt && tgt.tagName === 'IMG' && slot.classList.contains('has-image')) {
+          e.preventDefault();
+          e.stopPropagation();
+          const key = slot.dataset.key;
+          const dataUrl = imageStore[key];
+          if (dataUrl && window.openImageViewer) window.openImageViewer(dataUrl);
+        }
+      });
+    });
+  }
+
+  // 將 dataURL 圖片順時針旋轉 90°
+  function rotateDataUrl(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.height;
+        canvas.height = img.width;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(Math.PI / 2);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
     });
   }
 
@@ -266,8 +302,12 @@
   function collectPayload() {
     const educationRadio = document.querySelector('input[name="education"]:checked');
     const disabilityRadio = document.querySelector('input[name="disability"]:checked');
-    const jobCode = $('jobCategory').value;
+    // 職類欄位為唯讀 input，取 dataset.code（實際 code）而非畫面顯示文字
+    const jobCategoryEl = $('jobCategory');
+    const jobCode = (jobCategoryEl && jobCategoryEl.dataset.code) || record.jobCode || '';
     const jobMatch = window.getJobCategoryByCode(jobCode);
+    const jobName = (jobCategoryEl && jobCategoryEl.dataset.name)
+      || (jobMatch ? jobMatch.name : (record.jobName || ''));
 
     return {
       // 訓練/測驗資料
@@ -276,7 +316,7 @@
       authority: $('authority').value.trim(),
       authorityDoc: $('authorityDoc').value.trim(),
       jobCode: jobCode,
-      jobName: jobMatch ? jobMatch.name : (record.jobName || ''),
+      jobName: jobName,
       classNo: $('classNo').value.trim(),
       year: $('year').value.trim() || String(cfg.CURRENT_ROC_YEAR),
       batch: $('batch').value.trim(),
@@ -294,6 +334,7 @@
       emergencyPhone: $('emergencyPhone') ? $('emergencyPhone').value.trim() : '',
       invoiceType: (document.querySelector('input[name="invoiceType"]:checked') || {}).value || 'personal',
       invoiceTaxId: $('invoiceTaxId') ? $('invoiceTaxId').value.trim() : '',
+      examVenue: $('examVenue') ? $('examVenue').value.trim() : '',
       examMonth: $('examMonth') ? $('examMonth').value.trim() : '',
       zipCode: $('zipCode').value.trim(),
       address: $('address').value.trim(),
@@ -331,6 +372,7 @@
     if (!payload.idNumber)    add('身分證統一編號', 'idNumber');
     if (!payload.mobilePhone) add('行動電話', 'mobilePhone');
     if (!payload.address)     add('聯絡地址', 'address');
+    if (!payload.examVenue)   add('考場', 'examVenue');
     if (!payload.examMonth)   add('應考月份', 'examMonth');
     if (payload.invoiceType === 'company' && !payload.invoiceTaxId) {
       add('統一編號（公司發票必填）', 'invoiceTaxId');
@@ -377,7 +419,7 @@
   }
 
   // ============ 初始化 ============
-  initJobCategorySelect();
+  fillJobCategory();
   prefillFields();
   bindUploads();
   loadCachedImages();
