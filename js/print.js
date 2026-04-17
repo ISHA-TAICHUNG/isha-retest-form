@@ -370,30 +370,6 @@
     });
   });
 
-  // 放大檢視按鈕
-  document.querySelectorAll('[data-zoom-target]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const target = btn.dataset.zoomTarget;
-      const dataUrl = payload.images && payload.images[target];
-      if (dataUrl && window.openImageViewer) window.openImageViewer(dataUrl);
-    });
-  });
-
-  // 點影本圖片也能開啟放大檢視（手機友好）
-  ['idFrontCell', 'idBackCell'].forEach((cellId) => {
-    const cell = document.getElementById(cellId);
-    if (!cell) return;
-    cell.addEventListener('click', (e) => {
-      if (e.target && e.target.tagName === 'IMG') {
-        e.preventDefault();
-        const key = cellId === 'idFrontCell' ? 'idFront' : 'idBack';
-        const dataUrl = payload.images && payload.images[key];
-        if (dataUrl && window.openImageViewer) window.openImageViewer(dataUrl);
-      }
-    });
-  });
-
   // 初始化
   render();
   document.title = `${payload.name || '報名表'} — ${payload.year || ''} 年第 ${payload.batch || ''} 梯`;

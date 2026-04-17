@@ -218,29 +218,6 @@
       });
     });
 
-    // 放大檢視按鈕：開啟 lightbox
-    document.querySelectorAll('[data-zoom]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const target = btn.dataset.zoom;
-        const dataUrl = imageStore[target];
-        if (dataUrl && window.openImageViewer) window.openImageViewer(dataUrl);
-      });
-    });
-
-    // 點預覽圖也能放大（方便手機操作）
-    document.querySelectorAll('.upload-slot').forEach((slot) => {
-      slot.addEventListener('click', (e) => {
-        // 只有點在 img 上且有圖才觸發；避免與 label 點擊重新上傳衝突
-        const tgt = e.target;
-        if (tgt && tgt.tagName === 'IMG' && slot.classList.contains('has-image')) {
-          e.preventDefault();
-          e.stopPropagation();
-          const key = slot.dataset.key;
-          const dataUrl = imageStore[key];
-          if (dataUrl && window.openImageViewer) window.openImageViewer(dataUrl);
-        }
-      });
-    });
   }
 
   // 將 dataURL 圖片順時針旋轉 90°

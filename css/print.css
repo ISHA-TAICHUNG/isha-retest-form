@@ -261,8 +261,6 @@
 }
 .rotate-btn:hover { background: #0369A1; }
 .rotate-btn:active { transform: scale(0.95); }
-/* 點影本圖片也能放大（手機友好） */
-.id-cell.has-image .id-cell-image img { cursor: zoom-in; }
 @media print {
   .id-cell-actions,
   .rotate-btn { display: none !important; }
