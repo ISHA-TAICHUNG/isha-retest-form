@@ -4,7 +4,7 @@
 
 職業安全衛生管理職類測驗補考線上報名系統（GitHub Pages + GAS）。
 
-- **前端**：純 HTML/CSS/JS，部署於 GitHub Pages（geminihao0516/isha-retest-form）
+- **前端**：純 HTML/CSS/JS，部署於 GitHub Pages（ISHA-TAICHUNG/isha-retest-form）
 - **清冊來源**：Google Drive 資料夾內的 xlsx / Google Sheets
 - **後端**：Google Apps Script（lookup 查詢 + PDF 送出收件）
 - **使用情境**：全部由考生於**手機**操作（iOS Safari / Android Chrome）
@@ -13,7 +13,7 @@
 
 - 本機開發路徑：`/Users/hao/Desktop/管理職類測驗補考報名表/`
 - GAS 程式碼來源：`tools/gas_backend.js`（clasp 推送時拷到 `tools/gas/程式碼.js`）
-- GitHub 遠端：`https://github.com/geminihao0516/isha-retest-form.git`
+- GitHub 遠端：`https://github.com/ISHA-TAICHUNG/isha-retest-form.git`
 
 ## 程式碼風格
 

@@ -40,7 +40,7 @@ function getAdminToken() {
 
 // 允許呼叫的 origin 子字串清單。空陣列代表不檢查（部署初期測試用）
 // 公開測試階段：不限制來源網域。仍有 lookup-only + rate limit + ADMIN 分離防護。
-// 正式上線後如需鎖定，填入允許的網域即可（例 ['geminihao0516.github.io', 'localhost']）
+// 正式上線後如需鎖定，填入允許的網域即可（例 ['isha-taichung.github.io', 'localhost']）
 const ALLOWED_ORIGINS = [];
 
 // Rate limit：每個 IP/UA 指紋每分鐘最多請求次數
