@@ -25,7 +25,8 @@ tools/gas/
 # Log
 *.log
 
-# Claude review state
+# Claude Code 本機個人設定（權限白名單等）
+.claude/settings.local.json
 .claude_review_state.json
 
 # 官方範本不入 git（可能含範例個資）
