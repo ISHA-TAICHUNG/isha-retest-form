@@ -16,8 +16,12 @@
   } catch (e) {}
 
   if (!record) {
-    alert('找不到選定的應試者資料，將返回首頁。');
-    window.location.href = 'index.html';
+    if (typeof window.showToast === 'function') {
+      window.showToast('找不到選定的應試者資料，3 秒後返回首頁', 'warn', 3000);
+      setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+    } else {
+      window.location.href = 'index.html';
+    }
     return;
   }
 
@@ -165,15 +169,20 @@
         preview.appendChild(loadingTxt);
 
         try {
-          // 身分證需要較高解析度（用於辨識），大頭照可以小一些
-          const maxW = target === 'portrait' ? 600 : 1400;
-          const dataUrl = await compressImage(file, maxW, 0.85);
+          // 身分證影本需要較高解析度（用於辨識）
+          const dataUrl = await compressImage(file, 1400, 0.85);
           renderPreview(slot, dataUrl);
           // 暫存到 sessionStorage（payload 中）
           saveImageToPayload(target, dataUrl);
         } catch (err) {
           console.error(err);
-          alert('圖片處理失敗：' + err.message);
+          window.showToast('圖片處理失敗：' + err.message, 'error', 5000);
+          // 處理失敗時還原為空白占位，避免卡在「處理中…」
+          preview.replaceChildren();
+          const ph = document.createElement('span');
+          ph.className = 'upload-placeholder';
+          ph.textContent = '點此拍攝';
+          preview.appendChild(ph);
         }
       });
     });
@@ -204,13 +213,13 @@
         const origText = btn.textContent;
         btn.textContent = '旋轉中…';
         try {
-          const rotated = await rotateDataUrl(current);
+          const rotated = await window.rotateImage90(current);
           imageStore[target] = rotated;
           const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
           renderPreview(slot, rotated);
         } catch (err) {
           console.error(err);
-          alert('旋轉失敗：' + err.message);
+          window.showToast('旋轉失敗：' + err.message, 'error');
         } finally {
           btn.textContent = origText;
           btn.disabled = false;
@@ -218,27 +227,6 @@
       });
     });
 
-  }
-
-  // 將 dataURL 圖片順時針旋轉 90°
-  function rotateDataUrl(dataUrl) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.height;
-        canvas.height = img.width;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(Math.PI / 2);
-        ctx.drawImage(img, -img.width / 2, -img.height / 2);
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
-      };
-      img.onerror = reject;
-      img.src = dataUrl;
-    });
   }
 
   function renderPreview(slot, dataUrl) {
@@ -387,9 +375,10 @@
         window.location.href = 'print.html';
       } catch (e) {
         // 若 sessionStorage 容量爆掉（圖片太大），提示重新壓縮或減少圖片
-        alert(
-          '儲存失敗（可能因照片檔案過大）：' + e.message +
-          '\n\n建議：清除部分照片重新上傳，或拍攝較小尺寸照片。'
+        window.showToast(
+          '儲存失敗，可能是照片檔案過大。請清除部分照片重新拍攝較小尺寸。',
+          'error',
+          8000
         );
       }
     });

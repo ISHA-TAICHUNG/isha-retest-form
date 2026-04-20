@@ -4,8 +4,8 @@
   "description": "輸入身分證自動帶出職業安全衛生管理職類結訓電腦測驗補考報名表，支援照片上傳與 A4 列印",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f5f7fa",
-  "theme_color": "#1565c0",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0F172A",
   "orientation": "portrait",
   "lang": "zh-TW",
   "icons": [

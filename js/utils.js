@@ -180,3 +180,53 @@ window.formatRocDate = function (str) {
   if (!p.year) return str || '';
   return `${p.year}/${String(p.month).padStart(2, '0')}/${String(p.day).padStart(2, '0')}`;
 };
+
+/**
+ * 將 dataURL 圖片順時針旋轉 90°（form.js / print.js 共用）
+ * 旋轉後以白底填滿，品質 0.9 的 JPEG
+ */
+window.rotateImage90 = function (dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.height;
+      canvas.height = img.width;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+      ctx.restore();
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+};
+
+/**
+ * 輕量 toast 提示（無障礙 aria-live）
+ * 首次呼叫時自動掛載到 <body>，重複呼叫會重用同一容器
+ * @param {string} msg 訊息內容
+ * @param {'info'|'success'|'warn'|'error'} type 視覺樣式
+ * @param {number} durationMs 顯示毫秒數
+ */
+window.showToast = function (msg, type = 'info', durationMs = 4000) {
+  let el = document.getElementById('appToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'appToast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+  el.className = 'app-toast ' + type + ' show';
+  el.textContent = msg;
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => {
+    el.classList.remove('show');
+  }, durationMs);
+};

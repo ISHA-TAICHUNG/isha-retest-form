@@ -13,8 +13,12 @@
   } catch (e) {}
 
   if (!payload) {
-    alert('找不到報名表資料，將返回首頁。');
-    window.location.href = 'index.html';
+    if (typeof window.showToast === 'function') {
+      window.showToast('找不到報名表資料，3 秒後返回首頁', 'warn', 3000);
+      setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+    } else {
+      window.location.href = 'index.html';
+    }
     return;
   }
 
@@ -309,36 +313,13 @@
     }
   }
 
-  // ==== 旋轉身分證影本 90° ====
-  function rotateImageDataUrl(dataUrl) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.height;
-        canvas.height = img.width;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(Math.PI / 2);
-        ctx.drawImage(img, -canvas.height / 2, -canvas.width / 2, canvas.height, canvas.width);
-        ctx.restore();
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
-      };
-      img.onerror = reject;
-      img.src = dataUrl;
-    });
-  }
-
   async function handleRotate(target, btn) {
     if (!payload.images || !payload.images[target]) return;
     btn.disabled = true;
     const childNodes = Array.from(btn.childNodes);
     btn.replaceChildren(document.createTextNode('旋轉中…'));
     try {
-      const rotated = await rotateImageDataUrl(payload.images[target]);
+      const rotated = await window.rotateImage90(payload.images[target]);
       payload.images[target] = rotated;
       // 標記此影本已被使用者旋轉過 → 改用「填滿方格」模式消除留白
       // （通常表示原本是直立照片，旋轉後需要填滿）
@@ -350,7 +331,7 @@
       renderIdImage(cellId, slotId, rotated, true);
     } catch (err) {
       console.error(err);
-      alert('旋轉失敗：' + err.message);
+      window.showToast('旋轉失敗：' + err.message, 'error');
     } finally {
       btn.replaceChildren(...childNodes);
       btn.disabled = false;

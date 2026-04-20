@@ -922,6 +922,35 @@ a:focus-visible {
   border: 0;
 }
 
+/* ========== Toast（行內浮動提示，取代 alert） ========== */
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  transform: translateX(-50%) translateY(140%);
+  max-width: min(480px, calc(100vw - 32px));
+  min-width: 240px;
+  padding: 14px 20px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--rd-md);
+  box-shadow: var(--sh-lg);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--t-base), opacity var(--t-base);
+  text-align: center;
+}
+.app-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.app-toast.error   { background: var(--color-destructive); }
+.app-toast.warn    { background: var(--color-warn); }
+.app-toast.success { background: var(--color-success); }
+
 /* ========== Skip link ========== */
 .skip-link {
   position: absolute;

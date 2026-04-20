@@ -17,9 +17,12 @@
     const id = String(idNumber || '').trim().toUpperCase();
     if (!id) throw new Error('身分證字號不可為空');
 
-    // 快速本機格式檢核（節省一次 GAS 呼叫）
+    // 本機格式 + checksum 檢核（省一次 GAS 呼叫，攔截手誤輸入）
     if (!/^[A-Z][A-Z0-9]\d{8}$/.test(id)) {
       throw new Error('身分證格式不正確');
+    }
+    if (typeof window.validateTwId === 'function' && !window.validateTwId(id)) {
+      throw new Error('身分證檢核碼不正確，請確認號碼是否有打錯');
     }
 
     const url = `${cfg.GAS_URL}?action=lookup&id=${encodeURIComponent(id)}` +
