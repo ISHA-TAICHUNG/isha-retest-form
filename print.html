@@ -9,9 +9,9 @@
   <meta name="theme-color" content="#0F172A" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/main.css?v=20260420b" />
-  <link rel="stylesheet" href="css/print.css?v=20260420b" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="css/main.css?v=20260420c" />
+  <link rel="stylesheet" href="css/print.css?v=20260420c" />
 </head>
 <body>
   <div class="print-toolbar no-print">
@@ -244,16 +244,13 @@
 
   </div>
 
-  <script
-    src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
-    integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H"
-    crossorigin="anonymous"></script>
-  <script
-    src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"
-    integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/"
-    crossorigin="anonymous"></script>
-  <script src="js/config.js?v=20260420b"></script>
-  <script src="js/utils.js?v=20260420b"></script>
-  <script src="js/print.js?v=20260420b"></script>
+  <!--
+    PDF 函式庫（html2canvas + jsPDF）改為 lazy load：
+    首屏不載入（省 ~220KB），使用者按下「送出報名」時由 print.js 動態插入 script。
+    SRI integrity 也在 print.js 內檢核。
+  -->
+  <script src="js/config.js?v=20260420c"></script>
+  <script src="js/utils.js?v=20260420c"></script>
+  <script src="js/print.js?v=20260420c"></script>
 </body>
 </html>

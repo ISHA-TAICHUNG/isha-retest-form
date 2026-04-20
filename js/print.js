@@ -163,10 +163,56 @@
     }
   }
 
+  // ==== Lazy load html2canvas + jsPDF ====
+  // 首屏不載入這兩個重量級 CDN（~220KB），按下「送出報名」才動態插入。
+  // 保留 SRI integrity 檢核（和舊版 HTML 一致）。
+  const PDF_LIBS = [
+    {
+      id: 'lib-html2canvas',
+      src: 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+      integrity: 'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H',
+      check: () => typeof window.html2canvas !== 'undefined',
+    },
+    {
+      id: 'lib-jspdf',
+      src: 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
+      integrity: 'sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/',
+      check: () => !!((window.jspdf && window.jspdf.jsPDF) || window.jsPDF),
+    },
+  ];
+  function loadScriptOnce(lib) {
+    if (lib.check()) return Promise.resolve();
+    if (document.getElementById(lib.id)) {
+      // 已在載入中，等它完成
+      return new Promise((resolve, reject) => {
+        const el = document.getElementById(lib.id);
+        el.addEventListener('load', resolve, { once: true });
+        el.addEventListener('error', reject, { once: true });
+      });
+    }
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.id = lib.id;
+      s.src = lib.src;
+      s.integrity = lib.integrity;
+      s.crossOrigin = 'anonymous';
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('無法載入 ' + lib.src));
+      document.head.appendChild(s);
+    });
+  }
+  async function ensurePdfLibs() {
+    for (const lib of PDF_LIBS) {
+      await loadScriptOnce(lib);
+    }
+  }
+
   // ==== 產生 PDF Blob（html2canvas + jsPDF） ====
   async function generatePdfBlob() {
     const page = document.getElementById('printPage');
     if (!page) throw new Error('找不到列印頁面元素');
+    // 確保 PDF 函式庫已 lazy-load
+    await ensurePdfLibs();
     if (typeof html2canvas === 'undefined') throw new Error('PDF 函式庫載入失敗（html2canvas）');
     const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (!jsPDFLib) throw new Error('PDF 函式庫載入失敗（jsPDF）');
