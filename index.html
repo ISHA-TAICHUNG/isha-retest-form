@@ -4,12 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理職類測驗補考報名表 — 身分證查詢</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'self';" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0F172A" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/main.css?v=20260420a" />
+  <link rel="stylesheet" href="css/main.css?v=20260420b" />
 </head>
 <body>
   <a href="#main" class="skip-link">跳到主要內容</a>
@@ -42,7 +43,7 @@
       <h2 id="search-title" class="card-title">輸入您的身分證字號</h2>
       <p class="card-subtitle">系統將自動帶出您的補考報名資料。可在下一步微調聯絡資訊、上傳身分證影本，然後送出報名至訓練單位。</p>
 
-      <form class="hero-search" id="searchForm" onsubmit="event.preventDefault(); document.getElementById('searchBtn').click();">
+      <form class="hero-search" id="searchForm">
         <label for="idInput" class="hero-search-label">身分證統一編號</label>
         <div class="hero-search-row">
           <input
@@ -90,9 +91,9 @@
     </section>
   </main>
 
-  <script src="js/config.js?v=20260420a"></script>
-  <script src="js/utils.js?v=20260420a"></script>
-  <script src="js/api.js?v=20260420a"></script>
-  <script src="js/index.js?v=20260420a"></script>
+  <script src="js/config.js?v=20260420b"></script>
+  <script src="js/utils.js?v=20260420b"></script>
+  <script src="js/api.js?v=20260420b"></script>
+  <script src="js/index.js?v=20260420b"></script>
 </body>
 </html>

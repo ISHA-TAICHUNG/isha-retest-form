@@ -283,6 +283,7 @@
           forbidden_origin: '此網域不在白名單',
           rate_limited: '送出過於頻繁，請稍候再試',
           file_too_large: 'PDF 檔案過大（>10MB）',
+          not_a_pdf: 'PDF 檔案格式異常，請重新整理後再試',
           missing_required_fields: '資料不完整',
           invalid_id_format: '身分證格式不正確',
         }[json.error]) || ('後端錯誤：' + json.error);
@@ -301,6 +302,12 @@
       btn.textContent = '✓ 已送出';
       btn.classList.remove('btn-accent');
       btn.classList.add('btn-success');
+      // 送出成功後立即清除本機暫存（身分證影本 base64 + 個資），
+      // 避免 Back 或公共裝置殘留敏感資料
+      try {
+        sessionStorage.removeItem(FORM_KEY);
+        sessionStorage.removeItem('osha_selected_record');
+      } catch (e) {}
       // 送出成功後自動跳轉（若 config 有設定）
       if (redirectUrl) {
         setTimeout(() => { window.location.href = redirectUrl; }, redirectSeconds * 1000);

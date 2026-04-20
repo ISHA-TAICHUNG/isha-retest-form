@@ -38,13 +38,13 @@ function getAdminToken() {
   return (t && t.length >= 16) ? t : null; // 未設定或太短視為無 admin
 }
 
-// 允許呼叫的 origin 子字串清單。空陣列代表不檢查（部署初期測試用）
-// 公開測試階段：不限制來源網域。仍有 lookup-only + rate limit + ADMIN 分離防護。
-// 正式上線後如需鎖定，填入允許的網域即可（例 ['isha-taichung.github.io', 'localhost']）
-const ALLOWED_ORIGINS = [];
+// 允許呼叫的 origin 子字串清單。空陣列代表不檢查（僅限本機開發）
+// 正式發佈：鎖定官方網域，防止他人複製前端 + 公開 API_TOKEN 盜用 API
+const ALLOWED_ORIGINS = ['isha-taichung.github.io', 'localhost', '127.0.0.1'];
 
-// Rate limit：每個 IP/UA 指紋每分鐘最多請求次數
-const RATE_LIMIT_PER_MIN = 20;
+// Rate limit：每個 UA 指紋每分鐘最多請求次數
+// 調低自 20 → 10（GAS 拿不到真 IP，指紋可被偽造，降低單指紋上限縮小列舉攻擊面）
+const RATE_LIMIT_PER_MIN = 10;
 
 const CACHE_KEY = 'roster_v2';
 const CACHE_TTL_SEC = 3600;
@@ -100,10 +100,19 @@ function doPost(e) {
       return jsonResp({ error: 'file_too_large' });
     }
 
-    // 6) 寫入 Drive
+    // 6) 驗 PDF magic number（%PDF = 0x25 0x50 0x44 0x46）
+    // 防止攻擊者上傳任意 binary 偽裝成 PDF 塞爆 Drive 額度
+    const bytes = Utilities.base64Decode(pdfBase64);
+    if (bytes.length < 4 ||
+        bytes[0] !== 0x25 || bytes[1] !== 0x50 ||
+        bytes[2] !== 0x44 || bytes[3] !== 0x46) {
+      Logger.log('POST NOT_PDF: magic=' + bytes.slice(0, 4));
+      return jsonResp({ error: 'not_a_pdf' });
+    }
+
+    // 7) 寫入 Drive
     const folder = DriveApp.getFolderById(SUBMISSIONS_FOLDER_ID);
     const filename = buildFilename(data);
-    const bytes = Utilities.base64Decode(pdfBase64);
     const blob = Utilities.newBlob(bytes, 'application/pdf', filename);
     const file = folder.createFile(blob);
 

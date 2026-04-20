@@ -152,6 +152,15 @@
   // ============ 事件繫結 ============
   els.searchBtn.addEventListener('click', performSearch);
 
+  // 取代 HTML inline onsubmit（CSP 友善）
+  const searchForm = document.getElementById('searchForm');
+  if (searchForm) {
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      els.searchBtn.click();
+    });
+  }
+
   els.idInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') els.searchBtn.click();
   });
