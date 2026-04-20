@@ -133,8 +133,8 @@ window.APP_CONFIG = {
 4. **個資不入 git**：`data/` 已 gitignore，前端不存全清冊到 sessionStorage（僅暫存當前查詢的單筆，跳轉用）
 
 ### 部署層（請務必啟用）
-5. **Origin 白名單**：在 GAS 設 `ALLOWED_ORIGINS = ['你的 github.io 網域', 'localhost']`
-6. **Rate limit**：每分鐘 20 次（已內建，依需要調整）
+5. **Origin 白名單**：GAS 已啟用 `ALLOWED_ORIGINS = ['isha-taichung.github.io', 'localhost', '127.0.0.1']`（v20260420c）
+6. **Rate limit**：每分鐘 10 次（v20260420c 從 20 調降）
 7. **GAS 部署選項**：執行身分「我」、存取權「任何人」（讓 GAS 用您的身分讀 Drive，呼叫端不需登入）
 
 ### 維運層
