@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>補考報名 3 步驟</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+    background: #F8FAFC;
+    color: #0F172A;
+    padding: 40px;
+    width: 1080px;
+  }
+  .poster {
+    background: white;
+    border-radius: 20px;
+    padding: 44px 48px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+  }
+  .header {
+    text-align: center;
+    border-bottom: 3px solid #0F172A;
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  .header .badge {
+    display: inline-block;
+    background: #0369A1;
+    color: white;
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 10px;
+  }
+  .header .sub {
+    font-size: 18px;
+    color: #475569;
+  }
+  .url-box {
+    background: #0F172A;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 28px 0;
+  }
+  .url-box .label {
+    font-size: 14px;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    margin-bottom: 6px;
+  }
+  .url-box .url {
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    word-break: break-all;
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .step {
+    background: #F1F5F9;
+    border-radius: 16px;
+    padding: 22px 20px 20px;
+    position: relative;
+    border-top: 5px solid #0369A1;
+  }
+  .step-num {
+    position: absolute;
+    top: -20px;
+    left: 20px;
+    width: 48px;
+    height: 48px;
+    background: #0369A1;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 800;
+    box-shadow: 0 4px 12px rgba(3,105,161,0.35);
+  }
+  .step h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 16px 0 10px;
+    color: #0F172A;
+  }
+  .step .screenshot {
+    width: 100%;
+    border-radius: 10px;
+    margin: 12px 0 14px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border: 1px solid #E2E8F0;
+    overflow: hidden;
+  }
+  .step .screenshot img {
+    width: 100%;
+    display: block;
+  }
+  .step .points {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #334155;
+  }
+  .step .points li {
+    list-style: none;
+    padding-left: 22px;
+    position: relative;
+    margin-bottom: 6px;
+  }
+  .step .points li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #15803D;
+    font-weight: 700;
+  }
+  .step .points .warn::before {
+    content: '⚠';
+    color: #B45309;
+  }
+  .notice {
+    background: #FEF3C7;
+    border-left: 5px solid #F59E0B;
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #78350F;
+  }
+  .notice b { color: #92400E; }
+  .footer {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #E2E8F0;
+    text-align: center;
+    font-size: 13px;
+    color: #64748B;
+  }
+  .footer strong { color: #0F172A; }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <div class="header">
+    <div class="badge">線 上 報 名</div>
+    <h1>管理職類測驗補考 · 3 分鐘完成</h1>
+    <div class="sub">用手機就能操作，系統會自動帶入您的資料</div>
+  </div>
+
+  <div class="url-box">
+    <div class="label">報 名 網 址</div>
+    <div class="url">isha-taichung.github.io/isha-retest-form/</div>
+  </div>
+
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <h2>輸入身分證</h2>
+      <div class="screenshot"><img src="../screenshots/01-home.png" alt="首頁"></div>
+      <ul class="points">
+        <li>共 10 碼（1 英文 + 9 數字）</li>
+        <li>大小寫不分</li>
+        <li>按「查詢」自動帶資料</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <h2>確認 & 拍身分證</h2>
+      <div class="screenshot"><img src="../screenshots/03-form-top.png" alt="表單"></div>
+      <ul class="points">
+        <li>黃底欄位已自動帶入</li>
+        <li>白底欄位請確認或補填</li>
+        <li>拍身分證正反面（直拍也 OK）</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <h2>送出 & 加 LINE</h2>
+      <div class="screenshot"><img src="../screenshots/06-print-top.png" alt="送出"></div>
+      <ul class="points">
+        <li>預覽 A4 報名表無誤</li>
+        <li>按「送出報名」</li>
+        <li>完成後自動跳轉加 LINE 好友</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="notice">
+    <b>⚠ 注意事項：</b>
+    查無資料 → 確認字號沒打錯，仍查無請聯繫訓練單位 ・
+    手機拍照方向不對 → 按「↻ 旋轉」調整 ・
+    送出成功後請務必加入訓練單位 LINE 官方帳號接收考試通知
+  </div>
+
+  <div class="footer">
+    <strong>社團法人中華民國工業安全衛生協會附設台中職業訓練中心</strong>
+    &nbsp;·&nbsp;
+    考場：龍井 / 忠明
+    &nbsp;·&nbsp;
+    有問題請電洽訓練單位
+  </div>
+
+</div>
+</body>
+</html>
