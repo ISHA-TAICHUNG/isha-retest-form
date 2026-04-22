@@ -103,53 +103,337 @@
   }
 
   // ============ 圖片上傳處理 ============
-  // 將圖片壓縮並轉成 base64 dataURL
-  function compressImage(file, maxWidth = 1200, quality = 0.85) {
+  // 讀取 File 為 HTMLImageElement（同時處理 EXIF 直拍旋轉）
+  function fileToImage(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const fr = new FileReader();
       fr.onload = () => {
-        img.onload = () => {
-          // 身分證本身是橫式（寬 > 高，比例約 1.58:1）；
-          // 若使用者直拍（高 > 寬），自動旋轉 90° 順時針，使照片變為橫式。
-          const isPortrait = img.height > img.width;
-          const origW = img.width;
-          const origH = img.height;
-
-          // 旋轉後的邏輯寬高（交換）
-          const logicW = isPortrait ? origH : origW;
-          const logicH = isPortrait ? origW : origH;
-
-          const ratio = logicW > maxWidth ? maxWidth / logicW : 1;
-          const canvasW = Math.round(logicW * ratio);
-          const canvasH = Math.round(logicH * ratio);
-
-          const canvas = document.createElement('canvas');
-          canvas.width = canvasW;
-          canvas.height = canvasH;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, canvasW, canvasH);
-
-          if (isPortrait) {
-            // 順時針旋轉 90°：將畫布中心設為原點 → 旋轉 → 以旋轉後座標繪圖
-            ctx.save();
-            ctx.translate(canvasW / 2, canvasH / 2);
-            ctx.rotate(Math.PI / 2); // 90° 順時針
-            // 旋轉後座標：原始寬度對應 canvas 高度，原始高度對應 canvas 寬度
-            ctx.drawImage(img, -canvasH / 2, -canvasW / 2, canvasH, canvasW);
-            ctx.restore();
-          } else {
-            ctx.drawImage(img, 0, 0, canvasW, canvasH);
-          }
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        };
+        img.onload = () => resolve(img);
         img.onerror = reject;
         img.src = fr.result;
       };
       fr.onerror = reject;
       fr.readAsDataURL(file);
     });
+  }
+
+  // 將直拍圖片順時針旋轉 90° 使其變橫式（身分證應為橫式）
+  function rotateImageIfPortrait(img) {
+    if (img.height <= img.width) {
+      // 已經是橫式
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c;
+    }
+    // 直拍 → 順時針 90°
+    const c = document.createElement('canvas');
+    c.width = img.height;
+    c.height = img.width;
+    const ctx = c.getContext('2d');
+    ctx.translate(c.width / 2, c.height / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+    return c;
+  }
+
+  // 將 canvas 壓縮輸出 base64（含白底以防透明 PNG）
+  function canvasToDataUrl(canvas, maxWidth = 1400, quality = 0.85) {
+    const ratio = canvas.width > maxWidth ? maxWidth / canvas.width : 1;
+    if (ratio === 1) {
+      return canvas.toDataURL('image/jpeg', quality);
+    }
+    const out = document.createElement('canvas');
+    out.width = Math.round(canvas.width * ratio);
+    out.height = Math.round(canvas.height * ratio);
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(canvas, 0, 0, out.width, out.height);
+    return out.toDataURL('image/jpeg', quality);
+  }
+
+  // ============ 方案 A：裁切 Modal ============
+  const cropState = {
+    // 原圖（已自動旋轉為橫式）
+    sourceCanvas: null,
+    // 顯示在 modal canvas 上時的縮放比
+    displayScale: 1,
+    // 裁切框在「原圖座標系」的位置與大小
+    box: { x: 0, y: 0, w: 0, h: 0 },
+    // 原圖尺寸快取
+    srcW: 0,
+    srcH: 0,
+    // 關閉時解析 Promise 的 resolver
+    resolver: null,
+  };
+
+  // 開啟裁切介面，回傳 Promise：裁切完成的 dataURL 或 null（取消）
+  function openCropModal(sourceCanvas, targetKey) {
+    return new Promise((resolve) => {
+      cropState.sourceCanvas = sourceCanvas;
+      cropState.srcW = sourceCanvas.width;
+      cropState.srcH = sourceCanvas.height;
+      cropState.resolver = resolve;
+      // targetKey 目前僅作為輸入識別，不需存在 cropState 內
+
+      const modal = $('cropModal');
+      const stage = $('cropStage');
+      const canvas = $('cropCanvas');
+      const ctx = canvas.getContext('2d');
+
+      modal.classList.remove('hidden');
+
+      // 等待 modal 渲染後計算尺寸（否則 stage 尺寸為 0）
+      requestAnimationFrame(() => {
+        const stageW = stage.clientWidth;
+        const stageH = stage.clientHeight;
+        const scale = Math.min(stageW / cropState.srcW, stageH / cropState.srcH);
+        cropState.displayScale = scale;
+
+        canvas.width = Math.round(cropState.srcW * scale);
+        canvas.height = Math.round(cropState.srcH * scale);
+        ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+
+        // 初始化裁切框：原圖 85% 居中（以身分證 1.58:1 比例為目標）
+        const targetRatio = 1.58;
+        const imgRatio = cropState.srcW / cropState.srcH;
+        let boxW, boxH;
+        if (imgRatio > targetRatio) {
+          // 原圖比 1.58:1 更寬 → 以高度 80% 為基準
+          boxH = cropState.srcH * 0.85;
+          boxW = boxH * targetRatio;
+        } else {
+          // 原圖比 1.58:1 更高（瘦長）→ 以寬度 80% 為基準
+          boxW = cropState.srcW * 0.85;
+          boxH = boxW / targetRatio;
+        }
+        cropState.box = {
+          x: (cropState.srcW - boxW) / 2,
+          y: (cropState.srcH - boxH) / 2,
+          w: boxW,
+          h: boxH,
+        };
+        updateCropBoxUI();
+      });
+    });
+  }
+
+  // 同步裁切框 DOM 位置（根據 cropState.box 於原圖座標 + displayScale 換算）
+  function updateCropBoxUI() {
+    const box = $('cropBox');
+    const canvas = $('cropCanvas');
+    if (!box || !canvas) return;
+    const s = cropState.displayScale;
+    // canvas 在 stage 內居中，所以要加上 canvas 左上偏移
+    const stage = $('cropStage');
+    const offsetX = (stage.clientWidth - canvas.width) / 2;
+    const offsetY = (stage.clientHeight - canvas.height) / 2;
+    box.style.left = (offsetX + cropState.box.x * s) + 'px';
+    box.style.top = (offsetY + cropState.box.y * s) + 'px';
+    box.style.width = (cropState.box.w * s) + 'px';
+    box.style.height = (cropState.box.h * s) + 'px';
+  }
+
+  // 裁切框互動（拖曳 + 四角縮放）
+  function bindCropInteraction() {
+    const box = $('cropBox');
+    if (!box) return;
+
+    let mode = null; // 'move' | 'resize-nw' | 'resize-ne' | 'resize-sw' | 'resize-se'
+    let startPointer = { x: 0, y: 0 };
+    let startBox = null;
+
+    const onPointerDown = (e) => {
+      const target = e.target;
+      const handle = target.dataset.handle;
+      if (handle) {
+        mode = 'resize-' + handle;
+      } else {
+        mode = 'move';
+      }
+      startPointer = { x: e.clientX, y: e.clientY };
+      startBox = { ...cropState.box };
+      box.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const onPointerMove = (e) => {
+      if (!mode || !startBox) return;
+      const s = cropState.displayScale;
+      // 螢幕位移 → 原圖座標位移
+      const dx = (e.clientX - startPointer.x) / s;
+      const dy = (e.clientY - startPointer.y) / s;
+
+      const b = { ...startBox };
+      const srcW = cropState.srcW;
+      const srcH = cropState.srcH;
+      const MIN = 60; // 原圖座標中的最小邊長（避免框縮成一點）
+
+      if (mode === 'move') {
+        b.x = Math.max(0, Math.min(srcW - b.w, startBox.x + dx));
+        b.y = Math.max(0, Math.min(srcH - b.h, startBox.y + dy));
+      } else if (mode === 'resize-nw') {
+        b.x = Math.max(0, Math.min(startBox.x + startBox.w - MIN, startBox.x + dx));
+        b.y = Math.max(0, Math.min(startBox.y + startBox.h - MIN, startBox.y + dy));
+        // 防禦性上限：即便起點座標異常，也不讓 w/h 超出原圖
+        b.w = Math.min(startBox.w - (b.x - startBox.x), srcW - b.x);
+        b.h = Math.min(startBox.h - (b.y - startBox.y), srcH - b.y);
+      } else if (mode === 'resize-ne') {
+        b.y = Math.max(0, Math.min(startBox.y + startBox.h - MIN, startBox.y + dy));
+        b.w = Math.max(MIN, Math.min(srcW - startBox.x, startBox.w + dx));
+        b.h = Math.min(startBox.h - (b.y - startBox.y), srcH - b.y);
+      } else if (mode === 'resize-sw') {
+        b.x = Math.max(0, Math.min(startBox.x + startBox.w - MIN, startBox.x + dx));
+        b.w = Math.min(startBox.w - (b.x - startBox.x), srcW - b.x);
+        b.h = Math.max(MIN, Math.min(srcH - startBox.y, startBox.h + dy));
+      } else if (mode === 'resize-se') {
+        b.w = Math.max(MIN, Math.min(srcW - startBox.x, startBox.w + dx));
+        b.h = Math.max(MIN, Math.min(srcH - startBox.y, startBox.h + dy));
+      }
+      cropState.box = b;
+      updateCropBoxUI();
+    };
+
+    const onPointerUp = (e) => {
+      mode = null;
+      startBox = null;
+      try { box.releasePointerCapture(e.pointerId); } catch (_) {}
+    };
+
+    box.addEventListener('pointerdown', onPointerDown);
+    box.addEventListener('pointermove', onPointerMove);
+    box.addEventListener('pointerup', onPointerUp);
+    box.addEventListener('pointercancel', onPointerUp);
+
+    // 視窗縮放時重算裁切框位置
+    window.addEventListener('resize', () => {
+      if (!$('cropModal').classList.contains('hidden')) {
+        // 重新計算 displayScale
+        const stage = $('cropStage');
+        const canvas = $('cropCanvas');
+        const scale = Math.min(stage.clientWidth / cropState.srcW, stage.clientHeight / cropState.srcH);
+        cropState.displayScale = scale;
+        canvas.width = Math.round(cropState.srcW * scale);
+        canvas.height = Math.round(cropState.srcH * scale);
+        canvas.getContext('2d').drawImage(cropState.sourceCanvas, 0, 0, canvas.width, canvas.height);
+        updateCropBoxUI();
+      }
+    });
+  }
+
+  // 關閉 modal 並回傳結果（null = 取消）
+  function closeCropModal(result) {
+    const modal = $('cropModal');
+    modal.classList.add('hidden');
+    const resolver = cropState.resolver;
+    cropState.resolver = null;
+    cropState.sourceCanvas = null;
+    if (resolver) resolver(result);
+  }
+
+  // 根據 cropState.box 於原圖實際裁切，回傳 dataURL
+  function performCrop() {
+    const { box, sourceCanvas } = cropState;
+    const out = document.createElement('canvas');
+    out.width = Math.round(box.w);
+    out.height = Math.round(box.h);
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(
+      sourceCanvas,
+      box.x, box.y, box.w, box.h,   // source
+      0, 0, out.width, out.height    // dest
+    );
+    return { canvas: out, cropRatio: (box.w * box.h) / (cropState.srcW * cropState.srcH) };
+  }
+
+  function bindCropButtons() {
+    const confirmBtn = $('cropConfirmBtn');
+    const cancelBtn = $('cropCancelBtn');
+    const skipBtn = $('cropSkipBtn');
+    if (!confirmBtn || !cancelBtn || !skipBtn) return;
+
+    confirmBtn.addEventListener('click', () => {
+      // 防止 RAF 尚未執行完畢就點擊 → box 尺寸 0 會產出空白 dataURL
+      if (!cropState.box.w || !cropState.box.h) return;
+      try {
+        const { canvas, cropRatio } = performCrop();
+        const dataUrl = canvasToDataUrl(canvas, 1400, 0.85);
+        // 方案 B：品質警告（裁切佔原圖太小 = 學員拍太遠）
+        if (cropRatio < 0.25 && typeof window.showToast === 'function') {
+          window.showToast(
+            '⚠ 身分證在原始照片中偏小（<25%），列印可能模糊。建議重拍並讓身分證靠近鏡頭。',
+            'warn',
+            6000
+          );
+        }
+        closeCropModal(dataUrl);
+      } catch (err) {
+        console.error(err);
+        window.showToast('裁切失敗：' + err.message, 'error');
+      }
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      closeCropModal(null);
+    });
+
+    skipBtn.addEventListener('click', () => {
+      // 不裁切 → 使用整張原圖（已旋轉為橫式）壓縮輸出
+      const dataUrl = canvasToDataUrl(cropState.sourceCanvas, 1400, 0.85);
+      closeCropModal(dataUrl);
+    });
+  }
+
+  // 原始（已旋轉為橫式）canvas 快取：讓「重新裁切」不用再讀檔
+  const rawStore = { idFront: null, idBack: null };
+
+  // 以 DOM 方法建構「點此拍攝」引導框（避免 innerHTML，滿足 CSP/XSS 安全掃描）
+  function buildIdFrameHint(side) {
+    const wrap = document.createElement('span');
+    wrap.className = 'upload-placeholder';
+
+    const frame = document.createElement('div');
+    frame.className = 'id-frame-hint';
+    frame.setAttribute('aria-hidden', 'true');
+
+    const corners = document.createElement('div');
+    corners.className = 'id-frame-hint-corners';
+    frame.appendChild(corners);
+
+    const label = document.createElement('div');
+    label.className = 'id-frame-hint-text';
+    label.textContent = '身分證填滿此框';
+    frame.appendChild(label);
+
+    const cta = document.createElement('span');
+    cta.className = 'upload-cta';
+    cta.textContent = `📷 點此拍攝${side}`;
+
+    wrap.appendChild(frame);
+    wrap.appendChild(cta);
+    return wrap;
+  }
+
+  function showProcessing(slot) {
+    const preview = slot.querySelector('.upload-preview');
+    preview.replaceChildren();
+    const ph = document.createElement('span');
+    ph.className = 'upload-placeholder';
+    ph.textContent = '處理中…';
+    preview.appendChild(ph);
+  }
+
+  function restoreEmptyState(slot, key) {
+    const preview = slot.querySelector('.upload-preview');
+    preview.replaceChildren();
+    const side = key === 'idFront' ? '正面' : '反面';
+    preview.appendChild(buildIdFrameHint(side));
   }
 
   function bindUploads() {
@@ -159,30 +443,29 @@
         if (!file) return;
         const target = inp.dataset.target;
         const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
-        const preview = slot.querySelector('.upload-preview');
 
-        // 顯示處理中
-        preview.replaceChildren();
-        const loadingTxt = document.createElement('span');
-        loadingTxt.className = 'upload-placeholder';
-        loadingTxt.textContent = '處理中…';
-        preview.appendChild(loadingTxt);
+        showProcessing(slot);
 
         try {
-          // 身分證影本需要較高解析度（用於辨識）
-          const dataUrl = await compressImage(file, 1400, 0.85);
+          const img = await fileToImage(file);
+          // 先自動旋轉成橫式（若是直拍）再交給裁切 modal
+          const rotatedCanvas = rotateImageIfPortrait(img);
+          rawStore[target] = rotatedCanvas;
+
+          const dataUrl = await openCropModal(rotatedCanvas, target);
+          if (!dataUrl) {
+            // 使用者取消 → 還原空白狀態
+            restoreEmptyState(slot, target);
+            inp.value = '';
+            return;
+          }
           renderPreview(slot, dataUrl);
-          // 暫存到 sessionStorage（payload 中）
           saveImageToPayload(target, dataUrl);
         } catch (err) {
           console.error(err);
           window.showToast('圖片處理失敗：' + err.message, 'error', 5000);
-          // 處理失敗時還原為空白占位，避免卡在「處理中…」
-          preview.replaceChildren();
-          const ph = document.createElement('span');
-          ph.className = 'upload-placeholder';
-          ph.textContent = '點此拍攝';
-          preview.appendChild(ph);
+          restoreEmptyState(slot, target);
+          inp.value = '';
         }
       });
     });
@@ -192,18 +475,32 @@
         const target = btn.dataset.clear;
         const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
         slot.classList.remove('has-image');
-        const preview = slot.querySelector('.upload-preview');
-        preview.replaceChildren();
-        const ph = document.createElement('span');
-        ph.className = 'upload-placeholder';
-        ph.textContent = '點此拍攝';
-        preview.appendChild(ph);
+        restoreEmptyState(slot, target);
         slot.querySelector('input[type="file"]').value = '';
+        rawStore[target] = null;
         saveImageToPayload(target, null);
       });
     });
 
-    // 旋轉按鈕：就地旋轉 90° 順時針
+    // 重新裁切按鈕：直接用已拍過的原圖再進裁切，不用重拍
+    document.querySelectorAll('[data-recrop]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const target = btn.dataset.recrop;
+        const raw = rawStore[target];
+        if (!raw) {
+          window.showToast('找不到原始照片，請清除後重新拍攝', 'warn', 3000);
+          return;
+        }
+        const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
+        const dataUrl = await openCropModal(raw, target);
+        if (dataUrl) {
+          renderPreview(slot, dataUrl);
+          saveImageToPayload(target, dataUrl);
+        }
+      });
+    });
+
+    // 旋轉按鈕：就地旋轉 90° 順時針（同步旋轉 rawStore 以便再裁切方向正確）
     document.querySelectorAll('[data-rotate]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const target = btn.dataset.rotate;
@@ -217,6 +514,18 @@
           imageStore[target] = rotated;
           const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
           renderPreview(slot, rotated);
+          // 同步旋轉 rawStore（若存在）
+          if (rawStore[target]) {
+            const src = rawStore[target];
+            const rc = document.createElement('canvas');
+            rc.width = src.height;
+            rc.height = src.width;
+            const ctx = rc.getContext('2d');
+            ctx.translate(rc.width / 2, rc.height / 2);
+            ctx.rotate(Math.PI / 2);
+            ctx.drawImage(src, -src.width / 2, -src.height / 2);
+            rawStore[target] = rc;
+          }
         } catch (err) {
           console.error(err);
           window.showToast('旋轉失敗：' + err.message, 'error');
@@ -226,7 +535,6 @@
         }
       });
     });
-
   }
 
   function renderPreview(slot, dataUrl) {
@@ -387,6 +695,8 @@
   // ============ 初始化 ============
   fillJobCategory();
   prefillFields();
+  bindCropInteraction();
+  bindCropButtons();
   bindUploads();
   loadCachedImages();
   bindActions();

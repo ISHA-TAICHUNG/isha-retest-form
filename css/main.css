@@ -778,6 +778,250 @@ a:focus-visible {
 .upload-action-btn:active { transform: scale(0.97); }
 .upload-slot.has-image .btn-clear { align-self: auto; }
 
+/* ===== 身分證拍照引導框（Layer 0） =====
+   在 upload-drop 區塊背景畫一個 1.58:1 身分證比例的虛線外框，
+   讓使用者在「點此拍攝」前就看到應該把身分證填滿這個範圍。 */
+.upload-drop-id {
+  min-height: 200px;
+  position: relative;
+}
+.id-frame-hint {
+  position: relative;
+  width: 75%;
+  max-width: 260px;
+  aspect-ratio: 1.58 / 1; /* 身分證實際比例 */
+  margin: 0 auto var(--sp-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(3, 105, 161, 0.04) 0,
+      rgba(3, 105, 161, 0.04) 8px,
+      transparent 8px,
+      transparent 16px
+    );
+  border-radius: 6px;
+}
+.id-frame-hint-corners {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+}
+/* 四角 L 型標記，強調「這是框」 */
+.id-frame-hint-corners::before,
+.id-frame-hint-corners::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--color-accent);
+}
+.id-frame-hint-corners::before {
+  top: -2px; left: -2px;
+  border-right: none; border-bottom: none;
+  border-top-left-radius: 6px;
+}
+.id-frame-hint-corners::after {
+  bottom: -2px; right: -2px;
+  border-left: none; border-top: none;
+  border-bottom-right-radius: 6px;
+}
+/* 另外兩角用 box-shadow 技巧補上，避免增加 DOM */
+.id-frame-hint::before,
+.id-frame-hint::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--color-accent);
+  pointer-events: none;
+}
+.id-frame-hint::before {
+  top: -2px; right: -2px;
+  border-left: none; border-bottom: none;
+  border-top-right-radius: 6px;
+}
+.id-frame-hint::after {
+  bottom: -2px; left: -2px;
+  border-right: none; border-top: none;
+  border-bottom-left-radius: 6px;
+}
+.id-frame-hint-text {
+  font-size: var(--fs-xs);
+  color: var(--color-accent);
+  font-weight: 600;
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+.upload-cta {
+  font-size: var(--fs-sm);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+/* 有圖片時隱藏引導框，只顯示實際預覽 */
+.upload-slot.has-image .id-frame-hint,
+.upload-slot.has-image .upload-cta { display: none; }
+
+/* ===== 拍照提示卡 ===== */
+.photo-tips {
+  background: var(--color-accent-soft);
+  border: 1px solid #BAE6FD;
+  border-radius: var(--rd-md);
+  padding: var(--sp-4);
+  margin: -4px 0 var(--sp-5);
+}
+.photo-tips-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--color-accent-hover);
+  margin-bottom: var(--sp-2);
+}
+.photo-tips-list {
+  margin: 0 0 var(--sp-2);
+  padding-left: 22px;
+  font-size: var(--fs-sm);
+  color: var(--color-fg-soft);
+  line-height: 1.55;
+}
+.photo-tips-list li { margin-bottom: 3px; }
+.photo-tips-list strong {
+  color: var(--color-accent-hover);
+  font-weight: 700;
+}
+.photo-tips-foot {
+  font-size: var(--fs-xs);
+  color: var(--color-muted);
+  margin-top: var(--sp-2);
+  padding-top: var(--sp-2);
+  border-top: 1px dashed var(--color-border);
+}
+
+/* ========== Crop Modal（方案 A：拍後裁切） ========== */
+.crop-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3);
+  animation: fadeIn 0.18s ease-out;
+}
+.crop-modal.hidden { display: none; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.crop-modal-dialog {
+  background: #fff;
+  border-radius: var(--rd-md);
+  width: 100%;
+  max-width: 720px;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+.crop-modal-header {
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.crop-modal-header h3 {
+  margin: 0 0 4px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+.crop-modal-subtitle {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--color-muted);
+}
+
+/* 裁切舞台：容納 canvas + 可拖拉框 */
+.crop-stage {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background: #0b1220;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none; /* 防止瀏覽器處理拖拉手勢 */
+  user-select: none;
+}
+#cropCanvas {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  pointer-events: none; /* canvas 只作顯示，互動交給 crop-box */
+}
+.crop-box {
+  position: absolute;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); /* 框外半透明遮罩 */
+  cursor: move;
+  touch-action: none;
+  box-sizing: border-box;
+}
+.crop-box:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.crop-box-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, transparent 33%, rgba(255,255,255,0.3) 33%, rgba(255,255,255,0.3) 33.5%, transparent 33.5%, transparent 66.5%, rgba(255,255,255,0.3) 66.5%, rgba(255,255,255,0.3) 67%, transparent 67%),
+    linear-gradient(to bottom, transparent 33%, rgba(255,255,255,0.3) 33%, rgba(255,255,255,0.3) 33.5%, transparent 33.5%, transparent 66.5%, rgba(255,255,255,0.3) 66.5%, rgba(255,255,255,0.3) 67%, transparent 67%);
+  pointer-events: none;
+}
+.crop-handle {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: #fff;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  touch-action: none;
+  box-sizing: border-box;
+}
+.crop-handle-nw { top: -14px; left: -14px; cursor: nwse-resize; }
+.crop-handle-ne { top: -14px; right: -14px; cursor: nesw-resize; }
+.crop-handle-sw { bottom: -14px; left: -14px; cursor: nesw-resize; }
+.crop-handle-se { bottom: -14px; right: -14px; cursor: nwse-resize; }
+
+.crop-modal-footer {
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  background: var(--color-bg);
+}
+.crop-modal-footer .btn { min-height: 40px; }
+
+@media (max-width: 640px) {
+  .crop-modal { padding: 0; }
+  .crop-modal-dialog {
+    max-height: 100vh;
+    border-radius: 0;
+    height: 100vh;
+  }
+  .crop-stage { min-height: 0; }
+  .crop-modal-footer { padding: var(--sp-3); }
+  .crop-modal-footer .btn,
+  .crop-modal-footer .upload-action-btn { flex: 1; justify-content: center; min-width: 0; }
+}
 
 /* ========== Roster Status Mini ========== */
 .roster-meta-card {

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/main.css?v=20260420c" />
+  <link rel="stylesheet" href="css/main.css?v=20260422a" />
 </head>
 <body>
   <a href="#main" class="skip-link">跳到主要內容</a>
@@ -224,22 +224,34 @@
     <!-- 照片上傳 -->
     <section class="card" aria-labelledby="photo-title">
       <h2 id="photo-title" class="section-heading">身分證影本上傳</h2>
-      <p class="muted" style="margin: -8px 0 var(--sp-5);">點擊下方區塊直接開相機拍攝，系統會自動轉為橫式。方向不對可按「旋轉」調整。<br />1 吋大頭照請於訓練單位列印實體報名表後，由應試者本人親自黏貼。</p>
+      <div class="photo-tips" role="note">
+        <div class="photo-tips-title">📸 拍照三個重點（避免列印模糊）</div>
+        <ol class="photo-tips-list">
+          <li><strong>靠近拍</strong>：讓身分證佔滿畫面約 <strong>80%</strong>，四邊留一點點空白即可</li>
+          <li><strong>平放</strong>：身分證貼平桌面，相機從正上方垂直往下拍</li>
+          <li><strong>拍後裁切</strong>：系統會自動跳出裁切畫面，把框拖到身分證上即可</li>
+        </ol>
+        <div class="photo-tips-foot">1 吋大頭照請於訓練單位列印實體報名表後，由應試者本人親自黏貼。</div>
+      </div>
 
       <div class="form-grid">
         <div class="upload-slot" data-key="idFront">
           <div class="upload-label">身分證 — 正面</div>
           <div class="upload-hint">含姓名、身分證字號的那一面</div>
-          <label class="upload-drop">
+          <label class="upload-drop upload-drop-id">
             <input type="file" accept="image/*" capture="environment" data-target="idFront" hidden />
             <div class="upload-preview">
               <span class="upload-placeholder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4"/></svg>
-                點此拍攝
+                <div class="id-frame-hint" aria-hidden="true">
+                  <div class="id-frame-hint-corners"></div>
+                  <div class="id-frame-hint-text">身分證填滿此框</div>
+                </div>
+                <span class="upload-cta">📷 點此拍攝正面</span>
               </span>
             </div>
           </label>
           <div class="upload-actions">
+            <button type="button" class="upload-action-btn" data-recrop="idFront" aria-label="重新裁切正面影本">✂ 重新裁切</button>
             <button type="button" class="upload-action-btn" data-rotate="idFront" aria-label="旋轉正面影本 90 度">↻ 旋轉</button>
             <button type="button" class="btn btn-clear" data-clear="idFront">清除重拍</button>
           </div>
@@ -248,22 +260,53 @@
         <div class="upload-slot" data-key="idBack">
           <div class="upload-label">身分證 — 反面</div>
           <div class="upload-hint">含父母配偶、戶籍地址那一面</div>
-          <label class="upload-drop">
+          <label class="upload-drop upload-drop-id">
             <input type="file" accept="image/*" capture="environment" data-target="idBack" hidden />
             <div class="upload-preview">
               <span class="upload-placeholder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h7"/></svg>
-                點此拍攝
+                <div class="id-frame-hint" aria-hidden="true">
+                  <div class="id-frame-hint-corners"></div>
+                  <div class="id-frame-hint-text">身分證填滿此框</div>
+                </div>
+                <span class="upload-cta">📷 點此拍攝反面</span>
               </span>
             </div>
           </label>
           <div class="upload-actions">
+            <button type="button" class="upload-action-btn" data-recrop="idBack" aria-label="重新裁切反面影本">✂ 重新裁切</button>
             <button type="button" class="upload-action-btn" data-rotate="idBack" aria-label="旋轉反面影本 90 度">↻ 旋轉</button>
             <button type="button" class="btn btn-clear" data-clear="idBack">清除重拍</button>
           </div>
         </div>
       </div>
     </section>
+
+    <!-- 裁切 Modal（拍照後自動彈出，身分證比例 1.58:1 可拖拉調整） -->
+    <div id="cropModal" class="crop-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cropModalTitle">
+      <div class="crop-modal-dialog">
+        <header class="crop-modal-header">
+          <h3 id="cropModalTitle">裁切身分證</h3>
+          <p class="crop-modal-subtitle">拖拉框線對準身分證邊緣，完成後點「確認裁切」</p>
+        </header>
+
+        <div class="crop-stage" id="cropStage">
+          <canvas id="cropCanvas" aria-label="裁切預覽畫布"></canvas>
+          <div class="crop-box" id="cropBox" tabindex="0" aria-label="裁切框，可拖拉移動或調整邊角大小">
+            <div class="crop-box-grid" aria-hidden="true"></div>
+            <div class="crop-handle crop-handle-nw" data-handle="nw"></div>
+            <div class="crop-handle crop-handle-ne" data-handle="ne"></div>
+            <div class="crop-handle crop-handle-sw" data-handle="sw"></div>
+            <div class="crop-handle crop-handle-se" data-handle="se"></div>
+          </div>
+        </div>
+
+        <div class="crop-modal-footer">
+          <button type="button" class="btn btn-secondary" id="cropCancelBtn">取消</button>
+          <button type="button" class="upload-action-btn" id="cropSkipBtn" title="拍得很好、整張已填滿畫面時可跳過">跳過裁切</button>
+          <button type="button" class="btn btn-accent" id="cropConfirmBtn">✓ 確認裁切</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 動作按鈕 -->
     <div class="btn-row center">
@@ -278,9 +321,9 @@
     </div>
   </main>
 
-  <script src="js/config.js?v=20260420c"></script>
-  <script src="js/utils.js?v=20260420c"></script>
-  <script src="js/job-categories.js?v=20260420c"></script>
-  <script src="js/form.js?v=20260420c"></script>
+  <script src="js/config.js?v=20260422a"></script>
+  <script src="js/utils.js?v=20260422a"></script>
+  <script src="js/job-categories.js?v=20260422a"></script>
+  <script src="js/form.js?v=20260422a"></script>
 </body>
 </html>
