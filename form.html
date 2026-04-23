@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/main.css?v=20260422a" />
+  <link rel="stylesheet" href="css/main.css?v=20260423a" />
 </head>
 <body>
   <a href="#main" class="skip-link">跳到主要內容</a>
@@ -238,8 +238,7 @@
         <div class="upload-slot" data-key="idFront">
           <div class="upload-label">身分證 — 正面</div>
           <div class="upload-hint">含姓名、身分證字號的那一面</div>
-          <label class="upload-drop upload-drop-id">
-            <input type="file" accept="image/*" capture="environment" data-target="idFront" hidden />
+          <button type="button" class="upload-drop upload-drop-id" data-capture="idFront">
             <div class="upload-preview">
               <span class="upload-placeholder">
                 <div class="id-frame-hint" aria-hidden="true">
@@ -249,7 +248,9 @@
                 <span class="upload-cta">📷 點此拍攝正面</span>
               </span>
             </div>
-          </label>
+          </button>
+          <!-- 相簿 fallback 的隱藏 file input（僅在相機失敗時由 JS 程式觸發） -->
+          <input type="file" accept="image/*" data-fallback="idFront" hidden />
           <div class="upload-actions">
             <button type="button" class="upload-action-btn" data-recrop="idFront" aria-label="重新裁切正面影本">✂ 重新裁切</button>
             <button type="button" class="upload-action-btn" data-rotate="idFront" aria-label="旋轉正面影本 90 度">↻ 旋轉</button>
@@ -260,8 +261,7 @@
         <div class="upload-slot" data-key="idBack">
           <div class="upload-label">身分證 — 反面</div>
           <div class="upload-hint">含父母配偶、戶籍地址那一面</div>
-          <label class="upload-drop upload-drop-id">
-            <input type="file" accept="image/*" capture="environment" data-target="idBack" hidden />
+          <button type="button" class="upload-drop upload-drop-id" data-capture="idBack">
             <div class="upload-preview">
               <span class="upload-placeholder">
                 <div class="id-frame-hint" aria-hidden="true">
@@ -271,7 +271,8 @@
                 <span class="upload-cta">📷 點此拍攝反面</span>
               </span>
             </div>
-          </label>
+          </button>
+          <input type="file" accept="image/*" data-fallback="idBack" hidden />
           <div class="upload-actions">
             <button type="button" class="upload-action-btn" data-recrop="idBack" aria-label="重新裁切反面影本">✂ 重新裁切</button>
             <button type="button" class="upload-action-btn" data-rotate="idBack" aria-label="旋轉反面影本 90 度">↻ 旋轉</button>
@@ -280,6 +281,59 @@
         </div>
       </div>
     </section>
+
+    <!-- 客製全螢幕相機 Modal（主要拍照入口，避開 Android 相簿誤觸） -->
+    <div id="cameraModal" class="camera-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cameraModalTitle">
+      <header class="camera-header">
+        <button type="button" class="camera-header-btn" id="cameraCloseBtn" aria-label="關閉相機">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <h3 id="cameraModalTitle">拍攝身分證</h3>
+        <div class="camera-header-spacer" aria-hidden="true"></div>
+      </header>
+
+      <div class="camera-stage" id="cameraStage">
+        <video id="cameraVideo" autoplay playsinline muted></video>
+
+        <!-- 狀態遮罩：載入中、錯誤提示 -->
+        <div class="camera-overlay" id="cameraOverlay">
+          <div class="camera-hint-title" id="cameraHintTitle">身分證正面</div>
+          <div class="camera-hint-sub" id="cameraHintSub">請對齊邊框，並按下拍照</div>
+          <div class="camera-frame" id="cameraFrame" aria-hidden="true">
+            <div class="camera-frame-inner"></div>
+            <div class="camera-frame-face" data-face="front" aria-hidden="true">
+              <svg viewBox="0 0 60 72" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M30 8 C18 8, 12 18, 12 28 C12 38, 18 48, 30 48 C42 48, 48 38, 48 28 C48 18, 42 8, 30 8 Z"/>
+                <path d="M14 68 C18 58, 24 54, 30 54 C36 54, 42 58, 46 68"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 錯誤狀態（權限被拒 / 不支援） -->
+        <div class="camera-error hidden" id="cameraError" role="alert">
+          <div class="camera-error-icon">📷</div>
+          <div class="camera-error-title" id="cameraErrorTitle">無法開啟相機</div>
+          <div class="camera-error-msg" id="cameraErrorMsg">請確認已允許相機權限，或從相簿選擇已拍好的身分證照片。</div>
+          <div class="camera-error-actions">
+            <button type="button" class="btn btn-secondary" id="cameraRetryBtn">再試一次</button>
+            <button type="button" class="btn btn-accent js-camera-gallery">🖼️ 從相簿選擇</button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="camera-footer">
+        <button type="button" class="camera-footer-btn camera-gallery-btn js-camera-gallery">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span>相簿</span>
+        </button>
+        <button type="button" class="camera-shutter" id="cameraShutterBtn" aria-label="按下拍照">
+          <span class="camera-shutter-ring"></span>
+          <span class="camera-shutter-dot"></span>
+        </button>
+        <div class="camera-footer-spacer" aria-hidden="true"></div>
+      </footer>
+    </div>
 
     <!-- 裁切 Modal（拍照後自動彈出，身分證比例 1.58:1 可拖拉調整） -->
     <div id="cropModal" class="crop-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cropModalTitle">
@@ -321,9 +375,9 @@
     </div>
   </main>
 
-  <script src="js/config.js?v=20260422a"></script>
-  <script src="js/utils.js?v=20260422a"></script>
-  <script src="js/job-categories.js?v=20260422a"></script>
-  <script src="js/form.js?v=20260422a"></script>
+  <script src="js/config.js?v=20260423a"></script>
+  <script src="js/utils.js?v=20260423a"></script>
+  <script src="js/job-categories.js?v=20260423a"></script>
+  <script src="js/form.js?v=20260423a"></script>
 </body>
 </html>

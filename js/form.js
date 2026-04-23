@@ -436,39 +436,297 @@
     preview.appendChild(buildIdFrameHint(side));
   }
 
-  function bindUploads() {
-    document.querySelectorAll('input[type="file"][data-target]').forEach((inp) => {
-      inp.addEventListener('change', async (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const target = inp.dataset.target;
-        const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
+  // ============ 自訂全螢幕相機（解決 Android input[capture] 誤觸相簿） ============
+  const cameraState = {
+    stream: null,
+  };
 
-        showProcessing(slot);
+  const hasGetUserMedia = () =>
+    !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
-        try {
-          const img = await fileToImage(file);
-          // 先自動旋轉成橫式（若是直拍）再交給裁切 modal
-          const rotatedCanvas = rotateImageIfPortrait(img);
-          rawStore[target] = rotatedCanvas;
+  // 將 canvas 順時針旋轉 90°（用於相簿選到的直拍照片）
+  function rotateCanvas90Direct(canvas) {
+    const out = document.createElement('canvas');
+    out.width = canvas.height;
+    out.height = canvas.width;
+    const ctx = out.getContext('2d');
+    ctx.translate(out.width / 2, out.height / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+    return out;
+  }
 
-          const dataUrl = await openCropModal(rotatedCanvas, target);
-          if (!dataUrl) {
-            // 使用者取消 → 還原空白狀態
-            restoreEmptyState(slot, target);
-            inp.value = '';
-            return;
-          }
-          renderPreview(slot, dataUrl);
-          saveImageToPayload(target, dataUrl);
-        } catch (err) {
-          console.error(err);
-          window.showToast('圖片處理失敗：' + err.message, 'error', 5000);
-          restoreEmptyState(slot, target);
-          inp.value = '';
+  // 開啟全螢幕相機，回傳 { canvas } | { gallery: true } | { cancelled: true }
+  function openCameraModal(targetKey) {
+    return new Promise((resolve) => {
+      const modal = $('cameraModal');
+      const video = $('cameraVideo');
+      const overlay = $('cameraOverlay');
+      const errorBox = $('cameraError');
+      const hintTitle = $('cameraHintTitle');
+      const shutterBtn = $('cameraShutterBtn');
+
+      const isFront = targetKey === 'idFront';
+      modal.classList.toggle('is-front', isFront);
+      hintTitle.textContent = isFront ? '身分證正面' : '身分證反面';
+
+      errorBox.classList.add('hidden');
+      overlay.style.display = '';
+      shutterBtn.disabled = true;
+      modal.classList.remove('hidden');
+
+      // Android 返回手勢 / 系統 back：push 一個 history state，
+      // popstate 觸發時代表使用者按返回 → 視為關閉
+      let stateConsumedByPop = false;
+      try { history.pushState({ cameraOpen: true }, ''); } catch (_) {}
+
+      let resolved = false;
+      const resolveOnce = (payload) => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        resolve(payload);
+      };
+
+      const cleanup = () => {
+        stopCameraStream();
+        modal.classList.add('hidden');
+        modal.classList.remove('is-front');
+        window.removeEventListener('popstate', onPopState);
+        document.removeEventListener('visibilitychange', onVisibility);
+        // 若 cleanup 不是由 popstate 觸發，彈掉自己 push 的 history entry
+        if (!stateConsumedByPop && history.state && history.state.cameraOpen) {
+          try { history.back(); } catch (_) {}
         }
+      };
+
+      const onPopState = () => { stateConsumedByPop = true; resolveOnce({ cancelled: true }); };
+      const onVisibility = () => {
+        // 分頁切到背景 → 釋放相機資源（返回時使用者會重試）
+        if (document.visibilityState === 'hidden') stopCameraStream();
+      };
+
+      window.addEventListener('popstate', onPopState);
+      document.addEventListener('visibilitychange', onVisibility);
+
+      // 各按鈕用 { once: true }：handler 觸發後自動解除，避免重複註冊
+      $('cameraCloseBtn').addEventListener('click',
+        () => resolveOnce({ cancelled: true }), { once: true });
+
+      document.querySelectorAll('.js-camera-gallery').forEach((btn) => {
+        btn.addEventListener('click',
+          () => resolveOnce({ gallery: true }), { once: true });
       });
+
+      $('cameraRetryBtn').addEventListener('click', () => {
+        errorBox.classList.add('hidden');
+        overlay.style.display = '';
+        startCameraStream(video, shutterBtn, errorBox, overlay);
+      }, { once: true });
+
+      shutterBtn.addEventListener('click', () => {
+        if (shutterBtn.disabled) return;
+        // 再次防護：若 video 尚未取得尺寸就禁止快門（P1-3）
+        if (!video.videoWidth || !video.videoHeight) {
+          window.showToast('相機還沒準備好，請稍等 1 秒', 'warn', 2000);
+          return;
+        }
+        shutterBtn.disabled = true;
+        const capture = document.createElement('canvas');
+        capture.width = video.videoWidth;
+        capture.height = video.videoHeight;
+        capture.getContext('2d').drawImage(video, 0, 0, capture.width, capture.height);
+        resolveOnce({ canvas: capture });
+      }, { once: true });
+
+      startCameraStream(video, shutterBtn, errorBox, overlay);
     });
+  }
+
+  function stopCameraStream() {
+    if (cameraState.stream) {
+      cameraState.stream.getTracks().forEach((t) => t.stop());
+      cameraState.stream = null;
+    }
+    const video = $('cameraVideo');
+    if (video) video.srcObject = null;
+  }
+
+  async function startCameraStream(video, shutterBtn, errorBox, overlay) {
+    if (!hasGetUserMedia()) {
+      showCameraError('您的瀏覽器不支援相機，改從相簿選擇已拍好的照片。', errorBox, overlay);
+      return;
+    }
+    // 三層 constraint fallback：理想配置 → 僅指定後鏡頭 → 最低限度
+    // 用來繞過舊版 Android webview 對 ideal 解析不良導致的 OverconstrainedError
+    const attempts = [
+      { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+      { video: { facingMode: 'environment' }, audio: false },
+      { video: true, audio: false },
+    ];
+    let stream = null;
+    let lastErr = null;
+    for (const c of attempts) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(c);
+        break;
+      } catch (err) {
+        lastErr = err;
+        // 權限 / 裝置類錯誤不重試，只有 constraint 相關才退到下一層
+        if (err.name !== 'OverconstrainedError' && err.name !== 'TypeError') break;
+      }
+    }
+    if (!stream) {
+      console.warn('getUserMedia failed:', lastErr);
+      let msg = '請允許本網頁使用相機，或從相簿選擇已拍好的照片。';
+      if (lastErr && lastErr.name === 'NotAllowedError') {
+        msg = '相機權限被拒絕。請到瀏覽器設定重新允許，或改用相簿。';
+      } else if (lastErr && lastErr.name === 'NotFoundError') {
+        msg = '找不到可用的相機，請改用相簿選擇照片。';
+      } else if (lastErr && lastErr.name === 'NotReadableError') {
+        msg = '相機目前被其他 App 佔用，請關閉其他 App 後再試。';
+      }
+      showCameraError(msg, errorBox, overlay);
+      return;
+    }
+
+    cameraState.stream = stream;
+    video.srcObject = stream;
+
+    // P1-3：等待 video 實際有畫面尺寸才啟用快門。
+    // 先等 loadedmetadata 或 playing 事件；5 秒內沒動作就視為失敗。
+    try {
+      await new Promise((resolve, reject) => {
+        const onReady = () => {
+          if (video.videoWidth > 0) {
+            cleanupVideoEvents();
+            resolve();
+          }
+        };
+        const onError = (e) => {
+          cleanupVideoEvents();
+          reject(e || new Error('video error'));
+        };
+        const cleanupVideoEvents = () => {
+          video.removeEventListener('loadedmetadata', onReady);
+          video.removeEventListener('playing', onReady);
+          video.removeEventListener('error', onError);
+          clearTimeout(timer);
+        };
+        const timer = setTimeout(() => {
+          if (video.videoWidth > 0) { cleanupVideoEvents(); resolve(); }
+          else { cleanupVideoEvents(); reject(new Error('video metadata timeout')); }
+        }, 5000);
+        video.addEventListener('loadedmetadata', onReady);
+        video.addEventListener('playing', onReady);
+        video.addEventListener('error', onError);
+        video.play().catch(() => {}); // iOS 有時需手動 play，即使被 reject 也不要當失敗
+      });
+      shutterBtn.disabled = false;
+    } catch (err) {
+      console.warn('video not ready:', err);
+      showCameraError('相機無法取得畫面，請重試或改用相簿。', errorBox, overlay);
+    }
+  }
+
+  function showCameraError(msg, errorBox, overlay) {
+    const msgEl = $('cameraErrorMsg');
+    if (msgEl) msgEl.textContent = msg;
+    overlay.style.display = 'none';
+    errorBox.classList.remove('hidden');
+  }
+
+  // 觸發相簿選檔（透過 hidden input[data-fallback]）
+  // P1-1：監聽 change / cancel / window focus 三路退路，避免使用者取消後 Promise 永掛
+  function triggerGallery(targetKey) {
+    return new Promise((resolve) => {
+      const inp = document.querySelector(`input[data-fallback="${targetKey}"]`);
+      if (!inp) { resolve(null); return; }
+
+      let resolved = false;
+      const done = (file) => {
+        if (resolved) return;
+        resolved = true;
+        inp.removeEventListener('change', onChange);
+        inp.removeEventListener('cancel', onCancel);
+        window.removeEventListener('focus', onFocus);
+        resolve(file || null);
+      };
+      const onChange = () => done(inp.files && inp.files[0]);
+      const onCancel = () => done(null);
+      // 相容舊版瀏覽器（沒 cancel event）：視窗 focus 後延遲檢查 files 是否為空
+      const onFocus = () => setTimeout(() => {
+        if (!inp.files || !inp.files.length) done(null);
+      }, 400);
+
+      inp.addEventListener('change', onChange);
+      inp.addEventListener('cancel', onCancel);
+      window.addEventListener('focus', onFocus, { once: true });
+      inp.value = '';
+      inp.click();
+    });
+  }
+
+  // 主入口：處理單一 target 的完整拍照流程（相機 → 裁切 → 儲存）
+  async function handleCapture(targetKey) {
+    const slot = document.querySelector(`.upload-slot[data-key="${targetKey}"]`);
+    if (!slot) return;
+
+    let sourceCanvas = null;
+
+    if (hasGetUserMedia()) {
+      const result = await openCameraModal(targetKey);
+      if (result.cancelled) return;
+
+      if (result.canvas) {
+        sourceCanvas = result.canvas;
+      } else if (result.gallery) {
+        // 使用者在相機 UI 裡點了「相簿」
+        const file = await triggerGallery(targetKey);
+        if (!file) return;
+        const img = await fileToImage(file);
+        sourceCanvas = rotateImageIfPortrait(img);
+      }
+    } else {
+      // 瀏覽器完全不支援 getUserMedia → 直接走相簿
+      const file = await triggerGallery(targetKey);
+      if (!file) return;
+      const img = await fileToImage(file);
+      sourceCanvas = rotateImageIfPortrait(img);
+    }
+
+    if (!sourceCanvas) return;
+
+    showProcessing(slot);
+    try {
+      // 相機拍出來的通常已是橫式（video 依裝置旋轉），但從相簿選的需要檢查
+      // P2：直接 canvas 旋轉，避免 dataURL 往返消耗（舊 Android 低階機記憶體敏感）
+      if (sourceCanvas.height > sourceCanvas.width) {
+        sourceCanvas = rotateCanvas90Direct(sourceCanvas);
+      }
+      rawStore[targetKey] = sourceCanvas;
+
+      const dataUrl = await openCropModal(sourceCanvas, targetKey);
+      if (!dataUrl) {
+        restoreEmptyState(slot, targetKey);
+        return;
+      }
+      renderPreview(slot, dataUrl);
+      saveImageToPayload(targetKey, dataUrl);
+    } catch (err) {
+      console.error(err);
+      window.showToast('圖片處理失敗：' + err.message, 'error', 5000);
+      restoreEmptyState(slot, targetKey);
+    }
+  }
+
+  function bindUploads() {
+    // 主觸發：點擊 upload slot → 開相機
+    document.querySelectorAll('[data-capture]').forEach((btn) => {
+      btn.addEventListener('click', () => handleCapture(btn.dataset.capture));
+    });
+
+    // 相簿 fallback 的 change（由 triggerGallery 驅動，不需額外 listener）
 
     document.querySelectorAll('.btn-clear').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -476,7 +734,8 @@
         const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
         slot.classList.remove('has-image');
         restoreEmptyState(slot, target);
-        slot.querySelector('input[type="file"]').value = '';
+        const fb = document.querySelector(`input[data-fallback="${target}"]`);
+        if (fb) fb.value = '';
         rawStore[target] = null;
         saveImageToPayload(target, null);
       });
