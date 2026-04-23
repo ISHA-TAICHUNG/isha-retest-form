@@ -456,6 +456,81 @@
     return out;
   }
 
+  // 從 video 擷取當前 frame，處理兩個問題：
+  // 1) iOS Safari 可能把 sensor landscape 原生 frame 回傳，使用者在 portrait 裝置看到的
+  //    預覽是瀏覽器旋轉過的 → drawImage 後要補旋轉才能對齊預覽
+  // 2) 相機 overlay 只佔螢幕一部分，若擷取整張 video 畫面 ID 會太小 →
+  //    根據 overlay 在 video 中的位置反算，裁出 overlay 區域 + 15% 邊界
+  function captureFromVideo(video) {
+    // Step 1：擷取原始 frame
+    const raw = document.createElement('canvas');
+    raw.width = video.videoWidth;
+    raw.height = video.videoHeight;
+    raw.getContext('2d').drawImage(video, 0, 0);
+
+    // Step 2：若裝置為 portrait 但 sensor frame 為 landscape，補一次 90° CW 旋轉
+    //         讓 canvas 方向與使用者在預覽中看到的一致
+    let aligned = raw;
+    const devicePortrait = window.innerHeight > window.innerWidth;
+    if (devicePortrait && raw.width > raw.height) {
+      aligned = rotateCanvas90Direct(raw);
+    }
+
+    // Step 3：根據 overlay（青色 1.58:1 框）的螢幕位置，計算在 aligned canvas 中對應的範圍
+    const frameEl = document.getElementById('cameraFrame');
+    const vidRect = video.getBoundingClientRect();
+    const frameRect = frameEl ? frameEl.getBoundingClientRect() : null;
+
+    // 若抓不到框 rect，退回整張 aligned（不裁）
+    if (!frameRect || frameRect.width < 10 || frameRect.height < 10) {
+      return aligned;
+    }
+
+    const natW = aligned.width;
+    const natH = aligned.height;
+    const dispW = vidRect.width;
+    const dispH = vidRect.height;
+
+    // object-fit: cover → 自然內容以 max scale 填滿容器、溢出邊緣被裁切
+    const scale = Math.max(dispW / natW, dispH / natH);
+    const visCssW = natW * scale;
+    const visCssH = natH * scale;
+    const offX = (visCssW - dispW) / 2;
+    const offY = (visCssH - dispH) / 2;
+
+    // Overlay 位置（CSS 像素）→ aligned canvas 自然像素
+    let cropX = (frameRect.left - vidRect.left + offX) / scale;
+    let cropY = (frameRect.top - vidRect.top + offY) / scale;
+    let cropW = frameRect.width / scale;
+    let cropH = frameRect.height / scale;
+
+    // 外擴 15%，給 crop modal 微調空間
+    const pad = 0.15;
+    cropX -= cropW * pad / 2;
+    cropY -= cropH * pad / 2;
+    cropW *= 1 + pad;
+    cropH *= 1 + pad;
+
+    // 夾回 canvas 邊界
+    cropX = Math.max(0, Math.min(natW, cropX));
+    cropY = Math.max(0, Math.min(natH, cropY));
+    cropW = Math.min(natW - cropX, cropW);
+    cropH = Math.min(natH - cropY, cropH);
+
+    // 夾完後若範圍過小（計算有誤）→ 退回整張
+    if (cropW < 100 || cropH < 100) return aligned;
+
+    const cropped = document.createElement('canvas');
+    cropped.width = Math.round(cropW);
+    cropped.height = Math.round(cropH);
+    cropped.getContext('2d').drawImage(
+      aligned,
+      cropX, cropY, cropW, cropH,
+      0, 0, cropped.width, cropped.height
+    );
+    return cropped;
+  }
+
   // 開啟全螢幕相機，回傳 { canvas } | { gallery: true } | { cancelled: true }
   function openCameraModal(targetKey) {
     return new Promise((resolve) => {
@@ -532,11 +607,7 @@
           return;
         }
         shutterBtn.disabled = true;
-        const capture = document.createElement('canvas');
-        capture.width = video.videoWidth;
-        capture.height = video.videoHeight;
-        capture.getContext('2d').drawImage(video, 0, 0, capture.width, capture.height);
-        resolveOnce({ canvas: capture });
+        resolveOnce({ canvas: captureFromVideo(video) });
       }, { once: true });
 
       startCameraStream(video, shutterBtn, errorBox, overlay);
