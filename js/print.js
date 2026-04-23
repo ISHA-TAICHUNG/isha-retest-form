@@ -366,43 +366,13 @@
     }
   }
 
-  async function handleRotate(target, btn) {
-    if (!payload.images || !payload.images[target]) return;
-    btn.disabled = true;
-    const childNodes = Array.from(btn.childNodes);
-    btn.replaceChildren(document.createTextNode('旋轉中…'));
-    try {
-      const rotated = await window.rotateImage90(payload.images[target]);
-      payload.images[target] = rotated;
-      // 標記此影本已被使用者旋轉過 → 改用「填滿方格」模式消除留白
-      // （通常表示原本是直立照片，旋轉後需要填滿）
-      if (!payload.imageFills) payload.imageFills = {};
-      payload.imageFills[target] = true;
-      sessionStorage.setItem(FORM_KEY, JSON.stringify(payload));
-      const cellId = target === 'idFront' ? 'idFrontCell' : 'idBackCell';
-      const slotId = target === 'idFront' ? 'idFrontSlot' : 'idBackSlot';
-      renderIdImage(cellId, slotId, rotated, true);
-    } catch (err) {
-      console.error(err);
-      window.showToast('旋轉失敗：' + err.message, 'error');
-    } finally {
-      btn.replaceChildren(...childNodes);
-      btn.disabled = false;
-    }
-  }
-
   // 事件
   $('backBtn').addEventListener('click', () => { window.location.href = 'form.html'; });
   const submitBtn = $('submitBtn');
   if (submitBtn) submitBtn.addEventListener('click', submitToCloud);
 
-  document.querySelectorAll('[data-rotate-target]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const target = btn.dataset.rotateTarget;
-      if (target) handleRotate(target, btn);
-    });
-  });
+  // 旋轉按鈕已移除：相機拍照 + 相簿自動旋轉 + 裁切 modal 已能處理所有方向問題。
+  // 若列印時發現影本方向錯誤，請回上一步「返回編輯」重新拍攝或裁切。
 
   // 初始化
   render();

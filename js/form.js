@@ -830,41 +830,8 @@
       });
     });
 
-    // 旋轉按鈕：就地旋轉 90° 順時針（同步旋轉 rawStore 以便再裁切方向正確）
-    document.querySelectorAll('[data-rotate]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const target = btn.dataset.rotate;
-        const current = imageStore[target];
-        if (!current) return;
-        btn.disabled = true;
-        const origText = btn.textContent;
-        btn.textContent = '旋轉中…';
-        try {
-          const rotated = await window.rotateImage90(current);
-          imageStore[target] = rotated;
-          const slot = document.querySelector(`.upload-slot[data-key="${target}"]`);
-          renderPreview(slot, rotated);
-          // 同步旋轉 rawStore（若存在）
-          if (rawStore[target]) {
-            const src = rawStore[target];
-            const rc = document.createElement('canvas');
-            rc.width = src.height;
-            rc.height = src.width;
-            const ctx = rc.getContext('2d');
-            ctx.translate(rc.width / 2, rc.height / 2);
-            ctx.rotate(Math.PI / 2);
-            ctx.drawImage(src, -src.width / 2, -src.height / 2);
-            rawStore[target] = rc;
-          }
-        } catch (err) {
-          console.error(err);
-          window.showToast('旋轉失敗：' + err.message, 'error');
-        } finally {
-          btn.textContent = origText;
-          btn.disabled = false;
-        }
-      });
-    });
+    // 旋轉按鈕已移除：相機流程自動處理方向（captureFromVideo + rotateImageIfPortrait），
+    // 極端情況（相簿選到 180° 顛倒照片）請使用「清除重拍」。
   }
 
   function renderPreview(slot, dataUrl) {
