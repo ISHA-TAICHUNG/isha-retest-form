@@ -48,16 +48,22 @@
   .url-box {
     background: #0F172A;
     color: white;
-    text-align: center;
-    padding: 20px;
+    padding: 20px 24px;
     border-radius: 12px;
     margin: 28px 0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    align-items: center;
+  }
+  .url-box .url-info {
+    text-align: center;
   }
   .url-box .label {
     font-size: 14px;
     letter-spacing: 2px;
     opacity: 0.7;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
   .url-box .url {
     font-family: 'SF Mono', Menlo, monospace;
@@ -65,6 +71,28 @@
     font-weight: 600;
     letter-spacing: 0.5px;
     word-break: break-all;
+    margin-bottom: 6px;
+  }
+  .url-box .hint {
+    font-size: 13px;
+    opacity: 0.6;
+    letter-spacing: 1px;
+  }
+  .url-box .qr {
+    background: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .url-box .qr svg,
+  .url-box .qr img {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
   .steps {
     display: grid;
@@ -167,8 +195,12 @@
   </div>
 
   <div class="url-box">
-    <div class="label">報 名 網 址</div>
-    <div class="url">isha-taichung.github.io/isha-retest-form/</div>
+    <div class="url-info">
+      <div class="label">報 名 網 址</div>
+      <div class="url">isha-taichung.github.io/isha-retest-form/</div>
+      <div class="hint">或掃描右側 QR Code 直接開啟</div>
+    </div>
+    <div class="qr" id="qr"><!-- QR 由 render script 注入 --></div>
   </div>
 
   <div class="steps">
