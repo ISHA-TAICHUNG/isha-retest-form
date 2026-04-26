@@ -174,6 +174,88 @@
     color: #78350F;
   }
   .notice b { color: #92400E; }
+
+  /* Plan B：相機開不起來時的替代方案 */
+  .plan-b {
+    background: #ECFDF5;
+    border: 2px solid #10B981;
+    border-radius: 16px;
+    padding: 22px 24px;
+    margin: 24px 0;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+  .plan-b-img {
+    background: #0F172A;
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 9 / 16;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .plan-b-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .plan-b-content h3 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #047857;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .plan-b-content .badge {
+    background: #10B981;
+    color: white;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  .plan-b-content p {
+    font-size: 15px;
+    line-height: 1.65;
+    color: #064E3B;
+    margin-bottom: 10px;
+  }
+  .plan-b-content ol {
+    counter-reset: pb-step;
+    list-style: none;
+    padding: 0;
+  }
+  .plan-b-content ol li {
+    position: relative;
+    padding-left: 32px;
+    margin-bottom: 8px;
+    font-size: 15px;
+    line-height: 1.5;
+    color: #064E3B;
+    counter-increment: pb-step;
+  }
+  .plan-b-content ol li::before {
+    content: counter(pb-step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 22px;
+    height: 22px;
+    background: #10B981;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 22px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .plan-b-content strong { color: #047857; }
   .footer {
     margin-top: 24px;
     padding-top: 20px;
@@ -240,10 +322,25 @@
 
   </div>
 
+  <!-- Plan B：相機無法使用時 -->
+  <div class="plan-b">
+    <div class="plan-b-img">
+      <img src="../screenshots/08-camera-error.png" alt="無法開啟相機畫面">
+    </div>
+    <div class="plan-b-content">
+      <h3>📱 相機開不起來？ <span class="badge">PLAN B</span></h3>
+      <p>部分 Android 手機（如三星）即使授權相機，瀏覽器仍可能讀不到鏡頭。看到這個畫面時，請依下列步驟改用相簿：</p>
+      <ol>
+        <li>先用手機<strong>原生相機 App</strong> 拍下身分證正反面（橫式拍攝）</li>
+        <li>回到報名頁面 → 看到「無法開啟相機」畫面 → 點 <strong>「🖼️ 從相簿選擇」</strong></li>
+        <li>從相簿挑剛拍好的身分證照片即可，後續流程相同</li>
+      </ol>
+    </div>
+  </div>
+
   <div class="notice">
     <b>⚠ 注意事項：</b>
     查無資料 → 確認字號沒打錯，仍查無請聯繫訓練單位 ・
-    手機拍照方向不對 → 按「↻ 旋轉」調整 ・
     送出成功後請務必加入訓練單位 LINE 官方帳號接收考試通知
   </div>
 
