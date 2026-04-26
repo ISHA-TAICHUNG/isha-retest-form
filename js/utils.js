@@ -182,32 +182,6 @@ window.formatRocDate = function (str) {
 };
 
 /**
- * 將 dataURL 圖片順時針旋轉 90°（form.js / print.js 共用）
- * 旋轉後以白底填滿，品質 0.9 的 JPEG
- */
-window.rotateImage90 = function (dataUrl) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.height;
-      canvas.height = img.width;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.save();
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate(Math.PI / 2);
-      ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
-      ctx.restore();
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
-    };
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-};
-
-/**
  * 輕量 toast 提示（無障礙 aria-live）
  * 首次呼叫時自動掛載到 <body>，重複呼叫會重用同一容器
  * @param {string} msg 訊息內容

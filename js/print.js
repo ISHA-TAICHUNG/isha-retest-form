@@ -102,10 +102,9 @@
       { val: 'yes', label: '是(請於報名表後方檢附身心障礙手冊或學習障礙證明影本，若未檢附者，視同一般應試者，不予延長測驗時間20分鐘。)' },
     ], payload.disability);
 
-    // 身分證正反面影本（filled 狀態：旋轉過的影本改為填滿方格）
-    const fills = payload.imageFills || {};
-    renderIdImage('idFrontCell', 'idFrontSlot', payload.images && payload.images.idFront, !!fills.idFront);
-    renderIdImage('idBackCell', 'idBackSlot', payload.images && payload.images.idBack, !!fills.idBack);
+    // 身分證正反面影本（相機已自動裁切到 1.58:1，預設使用 contain 完整顯示）
+    renderIdImage('idFrontCell', 'idFrontSlot', payload.images && payload.images.idFront);
+    renderIdImage('idBackCell', 'idBackSlot', payload.images && payload.images.idBack);
 
   }
 
@@ -143,7 +142,7 @@
     });
   }
 
-  function renderIdImage(cellId, slotId, dataUrl, filled) {
+  function renderIdImage(cellId, slotId, dataUrl) {
     const cell = $(cellId);
     const slot = $(slotId);
     if (!cell || !slot) return;
@@ -154,12 +153,8 @@
       img.alt = '';
       slot.appendChild(img);
       cell.classList.add('has-image');
-      // filled：旋轉過的影本改為 cover（填滿方格），未旋轉者維持 contain（完整顯示）
-      if (filled) cell.classList.add('filled');
-      else cell.classList.remove('filled');
     } else {
       cell.classList.remove('has-image');
-      cell.classList.remove('filled');
     }
   }
 
@@ -217,7 +212,7 @@
     const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (!jsPDFLib) throw new Error('PDF 函式庫載入失敗（jsPDF）');
 
-    // 隱藏所有 .no-print 元素（工具列、旋轉按鈕、狀態列…）避免進入 PDF
+    // 隱藏所有 .no-print 元素（工具列、狀態列…）避免進入 PDF
     const noPrintEls = document.querySelectorAll('.no-print');
     const noPrintOld = [];
     noPrintEls.forEach((el) => {
@@ -316,11 +311,12 @@
         jobName: payload.jobName,
         pdfBase64: pdfBase64,
       };
-      const res = await fetch(cfg.GAS_URL, {
+      // 60 秒 timeout — PDF 上傳檔案大（最高約 6MB），首次 GAS 冷啟動更慢
+      const res = await window.fetchWithTimeout(cfg.GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(body),
-      });
+      }, 60000);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.error) {

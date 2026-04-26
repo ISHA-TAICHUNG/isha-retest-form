@@ -6,22 +6,22 @@
  *   - GAS API 請求：永遠 network（不快取，避免資料過期）
  *   - 升級時改 CACHE_NAME 即會自動清舊快取
  */
-const CACHE_NAME = 'osha-form-v20260423c';
+const CACHE_NAME = 'osha-form-v20260423d';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './form.html',
   './print.html',
   './manifest.json',
-  './css/main.css?v=20260423c',
-  './css/print.css?v=20260423c',
-  './js/config.js?v=20260423c',
-  './js/utils.js?v=20260423c',
-  './js/api.js?v=20260423c',
-  './js/job-categories.js?v=20260423c',
-  './js/index.js?v=20260423c',
-  './js/form.js?v=20260423c',
-  './js/print.js?v=20260423c',
+  './css/main.css?v=20260423d',
+  './css/print.css?v=20260423d',
+  './js/config.js?v=20260423d',
+  './js/utils.js?v=20260423d',
+  './js/api.js?v=20260423d',
+  './js/job-categories.js?v=20260423d',
+  './js/index.js?v=20260423d',
+  './js/form.js?v=20260423d',
+  './js/print.js?v=20260423d',
 ];
 
 self.addEventListener('install', (event) => {
@@ -76,6 +76,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 其他靜態資源（CSS/JS/SVG，都帶 ?v= 版本號）→ cache-first
+  // 失敗時回 503 而非 index.html — 避免瀏覽器把 HTML 當 JS 執行造成詭異錯誤
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
@@ -87,7 +88,7 @@ self.addEventListener('fetch', (event) => {
           }
           return res;
         })
-        .catch(() => caches.match('./index.html'));
+        .catch(() => new Response('', { status: 503, statusText: 'Service Unavailable (offline)' }));
     })
   );
 });

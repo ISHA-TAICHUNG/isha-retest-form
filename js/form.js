@@ -8,6 +8,13 @@
   const SELECTED_KEY = 'osha_selected_record';
   const FORM_KEY = 'osha_form_payload';
 
+  // 影像處理常數
+  const ID_CARD_RATIO = 1.58;     // 台灣身分證長寬比
+  const ID_IMG_MAX_WIDTH = 1400;  // 壓縮輸出寬度上限（兼顧解析度與 sessionStorage 額度）
+  const ID_IMG_QUALITY = 0.85;    // JPEG 壓縮品質
+  const MIN_CROP_RATIO = 0.25;    // 裁切佔原圖比例若 < 此值 → 警告身分證偏小
+  const MIN_CROP_SIZE = 40;       // 裁切框最小邊長（原圖座標系）
+
   // ============ 載入選定的記錄 ============
   let record = null;
   try {
@@ -140,7 +147,7 @@
   }
 
   // 將 canvas 壓縮輸出 base64（含白底以防透明 PNG）
-  function canvasToDataUrl(canvas, maxWidth = 1400, quality = 0.85) {
+  function canvasToDataUrl(canvas, maxWidth = ID_IMG_MAX_WIDTH, quality = ID_IMG_QUALITY) {
     const ratio = canvas.width > maxWidth ? maxWidth / canvas.width : 1;
     if (ratio === 1) {
       return canvas.toDataURL('image/jpeg', quality);
@@ -198,17 +205,16 @@
         ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
 
         // 初始化裁切框：原圖 85% 居中（以身分證 1.58:1 比例為目標）
-        const targetRatio = 1.58;
         const imgRatio = cropState.srcW / cropState.srcH;
         let boxW, boxH;
-        if (imgRatio > targetRatio) {
-          // 原圖比 1.58:1 更寬 → 以高度 80% 為基準
+        if (imgRatio > ID_CARD_RATIO) {
+          // 原圖比 1.58:1 更寬 → 以高度 85% 為基準
           boxH = cropState.srcH * 0.85;
-          boxW = boxH * targetRatio;
+          boxW = boxH * ID_CARD_RATIO;
         } else {
-          // 原圖比 1.58:1 更高（瘦長）→ 以寬度 80% 為基準
+          // 原圖比 1.58:1 更高（瘦長）→ 以寬度 85% 為基準
           boxW = cropState.srcW * 0.85;
-          boxH = boxW / targetRatio;
+          boxH = boxW / ID_CARD_RATIO;
         }
         cropState.box = {
           x: (cropState.srcW - boxW) / 2,
@@ -271,7 +277,7 @@
       const b = { ...startBox };
       const srcW = cropState.srcW;
       const srcH = cropState.srcH;
-      const MIN = 60; // 原圖座標中的最小邊長（避免框縮成一點）
+      const MIN = MIN_CROP_SIZE;
 
       if (mode === 'move') {
         b.x = Math.max(0, Math.min(srcW - b.w, startBox.x + dx));
@@ -309,19 +315,24 @@
     box.addEventListener('pointerup', onPointerUp);
     box.addEventListener('pointercancel', onPointerUp);
 
-    // 視窗縮放時重算裁切框位置
+    // 視窗縮放時重算裁切框位置（裝置旋轉、URL bar 收合都會觸發）
     window.addEventListener('resize', () => {
-      if (!$('cropModal').classList.contains('hidden')) {
-        // 重新計算 displayScale
-        const stage = $('cropStage');
-        const canvas = $('cropCanvas');
-        const scale = Math.min(stage.clientWidth / cropState.srcW, stage.clientHeight / cropState.srcH);
-        cropState.displayScale = scale;
-        canvas.width = Math.round(cropState.srcW * scale);
-        canvas.height = Math.round(cropState.srcH * scale);
-        canvas.getContext('2d').drawImage(cropState.sourceCanvas, 0, 0, canvas.width, canvas.height);
-        updateCropBoxUI();
-      }
+      if ($('cropModal').classList.contains('hidden')) return;
+      if (!cropState.sourceCanvas || !cropState.srcW) return;
+      const stage = $('cropStage');
+      const canvas = $('cropCanvas');
+      const scale = Math.min(stage.clientWidth / cropState.srcW, stage.clientHeight / cropState.srcH);
+      cropState.displayScale = scale;
+      canvas.width = Math.round(cropState.srcW * scale);
+      canvas.height = Math.round(cropState.srcH * scale);
+      canvas.getContext('2d').drawImage(cropState.sourceCanvas, 0, 0, canvas.width, canvas.height);
+      // 防止裝置旋轉後裁切框跑出 canvas 邊界（會導致 confirmCrop 拿到黑邊）
+      const b = cropState.box;
+      b.w = Math.min(b.w, cropState.srcW);
+      b.h = Math.min(b.h, cropState.srcH);
+      b.x = Math.max(0, Math.min(cropState.srcW - b.w, b.x));
+      b.y = Math.max(0, Math.min(cropState.srcH - b.h, b.y));
+      updateCropBoxUI();
     });
   }
 
@@ -363,9 +374,9 @@
       if (!cropState.box.w || !cropState.box.h) return;
       try {
         const { canvas, cropRatio } = performCrop();
-        const dataUrl = canvasToDataUrl(canvas, 1400, 0.85);
+        const dataUrl = canvasToDataUrl(canvas, ID_IMG_MAX_WIDTH, ID_IMG_QUALITY);
         // 方案 B：品質警告（裁切佔原圖太小 = 學員拍太遠）
-        if (cropRatio < 0.25 && typeof window.showToast === 'function') {
+        if (cropRatio < MIN_CROP_RATIO && typeof window.showToast === 'function') {
           window.showToast(
             '⚠ 身分證在原始照片中偏小（<25%），列印可能模糊。建議重拍並讓身分證靠近鏡頭。',
             'warn',
@@ -385,7 +396,7 @@
 
     skipBtn.addEventListener('click', () => {
       // 不裁切 → 使用整張原圖（已旋轉為橫式）壓縮輸出
-      const dataUrl = canvasToDataUrl(cropState.sourceCanvas, 1400, 0.85);
+      const dataUrl = canvasToDataUrl(cropState.sourceCanvas, ID_IMG_MAX_WIDTH, ID_IMG_QUALITY);
       closeCropModal(dataUrl);
     });
   }
@@ -470,8 +481,12 @@
 
     // Step 2：若裝置為 portrait 但 sensor frame 為 landscape，補一次 90° CW 旋轉
     //         讓 canvas 方向與使用者在預覽中看到的一致
+    //         優先用 screen.orientation（iOS Safari 在裝置剛旋轉時 innerHeight 會
+    //         有短暫不一致），不支援才退回 innerWidth/innerHeight 比較
     let aligned = raw;
-    const devicePortrait = window.innerHeight > window.innerWidth;
+    const devicePortrait = (screen.orientation && screen.orientation.type)
+      ? screen.orientation.type.startsWith('portrait')
+      : (window.innerHeight > window.innerWidth);
     if (devicePortrait && raw.width > raw.height) {
       aligned = rotateCanvas90Direct(raw);
     }
@@ -518,7 +533,8 @@
     cropH = Math.min(natH - cropY, cropH);
 
     // 夾完後若範圍過小（計算有誤）→ 退回整張
-    if (cropW < 100 || cropH < 100) return aligned;
+    // 用相對比例判斷而非固定 100px，避免小螢幕誤判
+    if (cropW < aligned.width * 0.1 || cropH < aligned.height * 0.1) return aligned;
 
     const cropped = document.createElement('canvas');
     cropped.width = Math.round(cropW);
@@ -532,6 +548,7 @@
   }
 
   // 開啟全螢幕相機，回傳 { canvas } | { gallery: true } | { cancelled: true }
+  // 用 AbortController 統一管理 listener，cleanup() 一鍵解除避免累積洩漏
   function openCameraModal(targetKey) {
     return new Promise((resolve) => {
       const modal = $('cameraModal');
@@ -550,10 +567,14 @@
       shutterBtn.disabled = true;
       modal.classList.remove('hidden');
 
-      // Android 返回手勢 / 系統 back：push 一個 history state，
-      // popstate 觸發時代表使用者按返回 → 視為關閉
+      // AbortController：所有 listener 都掛在 signal 上，cleanup 一次解除
+      const ac = new AbortController();
+      const sig = ac.signal;
+
+      // 延遲 pushState 到 stream 真的開起來才執行；若 getUserMedia 立刻失敗
+      // (e.g. desktop 沒鏡頭)，避免使用者點「從相簿」時被 history.back 帶回首頁
+      let historyPushed = false;
       let stateConsumedByPop = false;
-      try { history.pushState({ cameraOpen: true }, ''); } catch (_) {}
 
       let resolved = false;
       const resolveOnce = (payload) => {
@@ -564,53 +585,62 @@
       };
 
       const cleanup = () => {
+        ac.abort(); // 一次解除全部 listener
         stopCameraStream();
         modal.classList.add('hidden');
         modal.classList.remove('is-front');
-        window.removeEventListener('popstate', onPopState);
-        document.removeEventListener('visibilitychange', onVisibility);
-        // 若 cleanup 不是由 popstate 觸發，彈掉自己 push 的 history entry
-        if (!stateConsumedByPop && history.state && history.state.cameraOpen) {
+        // 若 cleanup 非 popstate 觸發，且當初有 push state → 彈掉
+        if (historyPushed && !stateConsumedByPop && history.state && history.state.cameraOpen) {
           try { history.back(); } catch (_) {}
         }
       };
 
-      const onPopState = () => { stateConsumedByPop = true; resolveOnce({ cancelled: true }); };
-      const onVisibility = () => {
-        // 分頁切到背景 → 釋放相機資源（返回時使用者會重試）
+      // popstate 與 visibilitychange 是「全域事件」，掛在 window/document
+      window.addEventListener('popstate', () => {
+        stateConsumedByPop = true;
+        resolveOnce({ cancelled: true });
+      }, { signal: sig });
+
+      document.addEventListener('visibilitychange', () => {
+        // 分頁切到背景 → 釋放相機資源
         if (document.visibilityState === 'hidden') stopCameraStream();
-      };
+      }, { signal: sig });
 
-      window.addEventListener('popstate', onPopState);
-      document.addEventListener('visibilitychange', onVisibility);
-
-      // 各按鈕用 { once: true }：handler 觸發後自動解除，避免重複註冊
       $('cameraCloseBtn').addEventListener('click',
-        () => resolveOnce({ cancelled: true }), { once: true });
+        () => resolveOnce({ cancelled: true }), { signal: sig });
 
       document.querySelectorAll('.js-camera-gallery').forEach((btn) => {
         btn.addEventListener('click',
-          () => resolveOnce({ gallery: true }), { once: true });
+          () => resolveOnce({ gallery: true }), { signal: sig });
       });
 
+      // retry 按鈕「不」加 once — 多次失敗（如 OverconstrainedError 後再 NotAllowedError）
+      // 仍要能重複按
       $('cameraRetryBtn').addEventListener('click', () => {
         errorBox.classList.add('hidden');
         overlay.style.display = '';
         startCameraStream(video, shutterBtn, errorBox, overlay);
-      }, { once: true });
+      }, { signal: sig });
 
       shutterBtn.addEventListener('click', () => {
         if (shutterBtn.disabled) return;
-        // 再次防護：若 video 尚未取得尺寸就禁止快門（P1-3）
         if (!video.videoWidth || !video.videoHeight) {
           window.showToast('相機還沒準備好，請稍等 1 秒', 'warn', 2000);
           return;
         }
         shutterBtn.disabled = true;
         resolveOnce({ canvas: captureFromVideo(video) });
-      }, { once: true });
+      }, { signal: sig });
 
-      startCameraStream(video, shutterBtn, errorBox, overlay);
+      // 啟動相機 + stream 起來後才 push history state（讓返回手勢有效但不會白 pop）
+      startCameraStream(video, shutterBtn, errorBox, overlay).then((ok) => {
+        if (ok && !resolved && !historyPushed) {
+          try {
+            history.pushState({ cameraOpen: true }, '');
+            historyPushed = true;
+          } catch (_) {}
+        }
+      });
     });
   }
 
@@ -623,10 +653,11 @@
     if (video) video.srcObject = null;
   }
 
+  // 回傳 true 代表 stream 成功啟動（讓呼叫端決定是否 pushState）
   async function startCameraStream(video, shutterBtn, errorBox, overlay) {
     if (!hasGetUserMedia()) {
       showCameraError('您的瀏覽器不支援相機，改從相簿選擇已拍好的照片。', errorBox, overlay);
-      return;
+      return false;
     }
     // 三層 constraint fallback：理想配置 → 僅指定後鏡頭 → 最低限度
     // 用來繞過舊版 Android webview 對 ideal 解析不良導致的 OverconstrainedError
@@ -658,7 +689,7 @@
         msg = '相機目前被其他 App 佔用，請關閉其他 App 後再試。';
       }
       showCameraError(msg, errorBox, overlay);
-      return;
+      return false;
     }
 
     cameraState.stream = stream;
@@ -694,9 +725,11 @@
         video.play().catch(() => {}); // iOS 有時需手動 play，即使被 reject 也不要當失敗
       });
       shutterBtn.disabled = false;
+      return true;
     } catch (err) {
       console.warn('video not ready:', err);
       showCameraError('相機無法取得畫面，請重試或改用相簿。', errorBox, overlay);
+      return false;
     }
   }
 
@@ -726,13 +759,19 @@
       const onChange = () => done(inp.files && inp.files[0]);
       const onCancel = () => done(null);
       // 相容舊版瀏覽器（沒 cancel event）：視窗 focus 後延遲檢查 files 是否為空
+      // 800ms 給老 Android 從相機 App 切回後的 change 事件留充足時間
       const onFocus = () => setTimeout(() => {
         if (!inp.files || !inp.files.length) done(null);
-      }, 400);
+      }, 800);
 
       inp.addEventListener('change', onChange);
-      inp.addEventListener('cancel', onCancel);
-      window.addEventListener('focus', onFocus, { once: true });
+      // 偵測現代瀏覽器是否支援 cancel；不支援才掛 focus fallback
+      const supportsCancel = ('oncancel' in HTMLInputElement.prototype);
+      if (supportsCancel) {
+        inp.addEventListener('cancel', onCancel);
+      } else {
+        window.addEventListener('focus', onFocus, { once: true });
+      }
       inp.value = '';
       inp.click();
     });
@@ -960,7 +999,7 @@
       const payload = collectPayload();
       const { errors, firstInvalidId } = validateRequired(payload);
       if (errors.length > 0) {
-        alert('請完成必填欄位：\n' + errors.join('、'));
+        window.showToast('請完成必填欄位：' + errors.join('、'), 'warn', 5000);
         // 自動捲動至第一個未填欄位並 focus，減少使用者尋找時間
         if (firstInvalidId) {
           const el = $(firstInvalidId);
