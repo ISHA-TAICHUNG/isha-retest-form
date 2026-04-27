@@ -233,25 +233,31 @@
       // 2) 把原頁面所有 stylesheets + #printPage clone 進 iframe
       const idoc = iframe.contentDocument;
       idoc.open();
-      idoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
-      // 同步原頁面 link rel=stylesheet
+      idoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body></body></html>');
+      idoc.close();
+      // 用 createElement + setAttribute 安全注入 stylesheet（避免 href 含特殊字元破壞 HTML）
       document.querySelectorAll('link[rel="stylesheet"]').forEach((l) => {
-        idoc.write(`<link rel="stylesheet" href="${l.href}">`);
+        const link = idoc.createElement('link');
+        link.setAttribute('rel', 'stylesheet');
+        link.setAttribute('href', l.href);
+        idoc.head.appendChild(link);
       });
-      // 同步原頁面 inline <style>
       document.querySelectorAll('style').forEach((s) => {
-        idoc.write('<style>' + s.textContent + '</style>');
+        const style = idoc.createElement('style');
+        style.textContent = s.textContent;
+        idoc.head.appendChild(style);
       });
       // iframe 內強制 720px viewport + table-layout:fixed
-      idoc.write(`<style>
-        html, body { margin: 0; padding: 0; background: #fff; }
-        body { width: ${A4_RENDER_WIDTH}px; }
-        .print-page { width: ${A4_RENDER_WIDTH}px !important; min-width: ${A4_RENDER_WIDTH}px !important; max-width: ${A4_RENDER_WIDTH}px !important; }
-        table { table-layout: fixed; width: 100%; }
-        .no-print { display: none !important; }
-      </style>`);
-      idoc.write('</head><body></body></html>');
-      idoc.close();
+      const iframeStyle = idoc.createElement('style');
+      iframeStyle.textContent =
+        'html, body { margin: 0; padding: 0; background: #fff; }' +
+        ' body { width: ' + A4_RENDER_WIDTH + 'px; }' +
+        ' .print-page { width: ' + A4_RENDER_WIDTH + 'px !important;' +
+        '   min-width: ' + A4_RENDER_WIDTH + 'px !important;' +
+        '   max-width: ' + A4_RENDER_WIDTH + 'px !important; }' +
+        ' table { table-layout: fixed; width: 100%; }' +
+        ' .no-print { display: none !important; }';
+      idoc.head.appendChild(iframeStyle);
       // clone #printPage 進去
       const clonedPage = page.cloneNode(true);
       idoc.body.appendChild(clonedPage);

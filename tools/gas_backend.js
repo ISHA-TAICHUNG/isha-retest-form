@@ -50,7 +50,8 @@ const CACHE_KEY = 'roster_v2';
 const CACHE_TTL_SEC = 3600;
 const SCHEDULE_CACHE_KEY = 'schedule_v1';
 // 考試行事曆檔名關鍵字（檔名包含其中之一即視為行事曆檔）
-const SCHEDULE_FILE_KEYWORDS = ['考試行事曆', '行事曆', 'schedule', '考試日期'];
+// ⚠ 不要加「考試日期」這種太寬的關鍵字，會誤判清冊（例：考試日期清冊.xlsx）
+const SCHEDULE_FILE_KEYWORDS = ['考試行事曆', '行事曆', 'schedule'];
 
 // ====== POST 入口：接收報名表送出（PDF 上傳） ======
 function doPost(e) {
@@ -119,7 +120,8 @@ function doPost(e) {
     const blob = Utilities.newBlob(bytes, 'application/pdf', filename);
     const file = folder.createFile(blob);
 
-    Logger.log('SUBMIT OK: ' + filename + ' → ' + file.getId());
+    // 不在 log 寫姓名/身分證號（含於 filename 內）— PII minimization
+    Logger.log('SUBMIT OK: id=' + file.getId() + ' size=' + bytes.length);
     return jsonResp({
       ok: true,
       fileId: file.getId(),
@@ -286,9 +288,10 @@ function getScheduleCached() {
 }
 
 function isScheduleFile(filename) {
+  // 統一 lower-case 比對（中文 lower-case === 原字串，英文也能 case-insensitive 命中）
   const lower = filename.toLowerCase();
   return SCHEDULE_FILE_KEYWORDS.some(function (k) {
-    return filename.indexOf(k) !== -1 || lower.indexOf(k.toLowerCase()) !== -1;
+    return lower.indexOf(k.toLowerCase()) !== -1;
   });
 }
 

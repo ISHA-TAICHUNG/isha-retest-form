@@ -147,38 +147,52 @@
   // 從 JPEG bytes 讀 EXIF Orientation tag（1-8）
   // 1: normal / 3: 180° / 6: 90°CW / 8: 90°CCW（其餘為翻轉組合）
   function readExifOrientation(file) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const fr = new FileReader();
       fr.onload = (e) => {
-        const view = new DataView(e.target.result);
-        if (view.getUint16(0, false) !== 0xFFD8) return resolve(1); // 非 JPEG
-        const length = view.byteLength;
-        let offset = 2;
-        while (offset < length) {
-          if (view.getUint16(offset + 2, false) <= 8) return resolve(1);
-          const marker = view.getUint16(offset, false);
-          offset += 2;
-          if (marker === 0xFFE1) {
-            if (view.getUint32(offset += 2, false) !== 0x45786966) return resolve(1); // 'Exif'
-            const little = view.getUint16(offset += 6, false) === 0x4949;
-            offset += view.getUint32(offset + 4, little);
-            const tags = view.getUint16(offset, little);
+        // 整段 try 包裹：JPEG bytes 結構異常時不要讓 Promise 永掛
+        try {
+          const view = new DataView(e.target.result);
+          if (view.byteLength < 12 || view.getUint16(0, false) !== 0xFFD8) return resolve(1);
+          const length = view.byteLength;
+          let offset = 2;
+          while (offset < length - 4) {
+            if (view.getUint16(offset + 2, false) <= 8) return resolve(1);
+            const marker = view.getUint16(offset, false);
             offset += 2;
-            for (let i = 0; i < tags; i++) {
-              if (view.getUint16(offset + (i * 12), little) === 0x0112) {
-                return resolve(view.getUint16(offset + (i * 12) + 8, little));
+            if (marker === 0xFFE1) {
+              if (offset + 8 > length) return resolve(1);
+              if (view.getUint32(offset += 2, false) !== 0x45786966) return resolve(1);
+              const little = view.getUint16(offset += 6, false) === 0x4949;
+              offset += view.getUint32(offset + 4, little);
+              if (offset + 2 > length) return resolve(1);
+              const tags = view.getUint16(offset, little);
+              offset += 2;
+              for (let i = 0; i < tags; i++) {
+                const tagOffset = offset + (i * 12);
+                if (tagOffset + 10 > length) break;
+                if (view.getUint16(tagOffset, little) === 0x0112) {
+                  return resolve(view.getUint16(tagOffset + 8, little));
+                }
               }
+            } else if ((marker & 0xFF00) !== 0xFF00) {
+              break;
+            } else {
+              if (offset + 2 > length) break;
+              offset += view.getUint16(offset, false);
             }
-          } else if ((marker & 0xFF00) !== 0xFF00) {
-            break;
-          } else {
-            offset += view.getUint16(offset, false);
           }
+          resolve(1);
+        } catch (_) {
+          resolve(1); // 任何例外都當作 normal orientation
         }
-        resolve(1);
       };
-      fr.onerror = reject;
-      fr.readAsArrayBuffer(file.slice(0, 65536)); // 只讀前 64KB 找 EXIF
+      fr.onerror = () => resolve(1); // 讀檔失敗也別卡住
+      try {
+        fr.readAsArrayBuffer(file.slice(0, 65536)); // 只讀前 64KB 找 EXIF
+      } catch (_) {
+        resolve(1);
+      }
     });
   }
 
@@ -220,28 +234,6 @@
     return c;
   }
 
-  // 保留別名給舊呼叫端，但行為不再「自動旋轉」
-  function rotateImageIfPortrait(img) {
-    return ensureCanvas(img);
-  }
-  // 真的要 90° 旋轉的舊版邏輯，作為將來移除前的暫存（目前無人呼叫）
-  function _legacyRotateIfPortrait(img) {
-    if (img.height <= img.width) {
-      const c = document.createElement('canvas');
-      c.width = img.width;
-      c.height = img.height;
-      c.getContext('2d').drawImage(img, 0, 0);
-      return c;
-    }
-    const c = document.createElement('canvas');
-    c.width = img.height;
-    c.height = img.width;
-    const ctx = c.getContext('2d');
-    ctx.translate(c.width / 2, c.height / 2);
-    ctx.rotate(Math.PI / 2);
-    ctx.drawImage(img, -img.width / 2, -img.height / 2);
-    return c;
-  }
 
   // 將 canvas 壓縮輸出 base64（含白底以防透明 PNG）
   function canvasToDataUrl(canvas, maxWidth = ID_IMG_MAX_WIDTH, quality = ID_IMG_QUALITY) {
@@ -765,7 +757,16 @@
           return;
         }
         shutterBtn.disabled = true;
-        resolveOnce({ canvas: captureFromVideo(video) });
+        try {
+          const canvas = captureFromVideo(video);
+          if (!canvas || !canvas.width) throw new Error('擷取結果為空');
+          resolveOnce({ canvas });
+        } catch (err) {
+          // captureFromVideo 失敗（罕見）：解鎖快門讓使用者重試而非卡死
+          console.error('captureFromVideo failed:', err);
+          shutterBtn.disabled = false;
+          window.showToast('拍照失敗，請再試一次：' + err.message, 'error', 4000);
+        }
       }, { signal: sig });
 
       // 啟動相機 + stream 起來後才 push history state（讓返回手勢有效但不會白 pop）
@@ -931,14 +932,14 @@
         const file = await triggerGallery(targetKey);
         if (!file) return;
         const img = await fileToImage(file);
-        sourceCanvas = rotateImageIfPortrait(img);
+        sourceCanvas = ensureCanvas(img);
       }
     } else {
       // 瀏覽器完全不支援 getUserMedia → 直接走相簿
       const file = await triggerGallery(targetKey);
       if (!file) return;
       const img = await fileToImage(file);
-      sourceCanvas = rotateImageIfPortrait(img);
+      sourceCanvas = ensureCanvas(img);
     }
 
     if (!sourceCanvas) return;
@@ -1003,8 +1004,9 @@
       });
     });
 
-    // 旋轉按鈕已移除：相機流程自動處理方向（captureFromVideo + rotateImageIfPortrait），
-    // 極端情況（相簿選到 180° 顛倒照片）請使用「清除重拍」。
+    // 主上傳介面的旋轉按鈕已移除（自動處理方向：相機 captureFromVideo +
+    // 相簿 EXIF auto-rotate）。裁切 modal 內保留「↻ 旋轉 90°」按鈕作為
+    // 終極 fallback，相簿選到方向不對的照片時仍可手動修正。
   }
 
   function renderPreview(slot, dataUrl) {
