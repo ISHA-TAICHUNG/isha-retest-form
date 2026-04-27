@@ -896,7 +896,8 @@ a:focus-visible {
 .exam-date-card-title {
   font-size: var(--fs-md);
   color: #78350F;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  line-height: 1.5;
 }
 .exam-date-card-title strong {
   color: #B45309;
@@ -904,14 +905,27 @@ a:focus-visible {
   font-size: var(--fs-lg);
   letter-spacing: 0.5px;
 }
+.exam-date-card-label {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: #78350F;
+}
 .exam-date-card-note {
   font-size: var(--fs-xs);
   color: #92400E;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 .exam-date-card-note strong {
   color: #78350F;
   font-weight: 700;
+}
+.exam-date-card-note strong:first-of-type {
+  display: inline-block;
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 4px;
 }
 
 .photo-tips {

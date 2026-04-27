@@ -204,89 +204,111 @@
     }
   }
 
-  // ==== 產生 PDF Blob（html2canvas + jsPDF） ====
+  // ==== 產生 PDF Blob（html2canvas + jsPDF）====
+  // 策略：把 #printPage clone 到一個固定 720px 寬的隱藏 iframe，
+  //       html2canvas 對 iframe 內的元素擷取，完全脫離原頁面 viewport / zoom 干擾
+  //       徹底解決 Android Chrome 縮放或廠商客製 viewport 造成的版面跑掉
   async function generatePdfBlob() {
     const page = document.getElementById('printPage');
     if (!page) throw new Error('找不到列印頁面元素');
-    // 確保 PDF 函式庫已 lazy-load
     await ensurePdfLibs();
     if (typeof html2canvas === 'undefined') throw new Error('PDF 函式庫載入失敗（html2canvas）');
     const jsPDFLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     if (!jsPDFLib) throw new Error('PDF 函式庫載入失敗（jsPDF）');
 
-    // 隱藏所有 .no-print 元素（工具列、狀態列…）避免進入 PDF
-    const noPrintEls = document.querySelectorAll('.no-print');
-    const noPrintOld = [];
-    noPrintEls.forEach((el) => {
-      noPrintOld.push({ el: el, display: el.style.display });
-      el.style.display = 'none';
-    });
-
-    // 強制以 A4 寬度（19cm ≈ 718.6px @ 96dpi）渲染，避免手機窄 viewport 下壓縮版面
     const A4_RENDER_WIDTH = 720;
-    const oldW = page.style.width;
-    const oldMinW = page.style.minWidth;
-    const oldMaxW = page.style.maxWidth;
-    page.style.width = A4_RENDER_WIDTH + 'px';
-    page.style.minWidth = A4_RENDER_WIDTH + 'px';
-    page.style.maxWidth = A4_RENDER_WIDTH + 'px';
 
-    // Android Chrome 雙重保險：把所有 table 也固定寬度，避免 viewport 縮窄時
-    // 內部 colgroup 的 % 寬度被算成相對 360px → 中文欄位擠成直書
-    const tables = page.querySelectorAll('table');
-    const oldTableStyles = [];
-    tables.forEach((t) => {
-      oldTableStyles.push({ el: t, w: t.style.width, tableLayout: t.style.tableLayout });
-      t.style.width = '100%';
-      t.style.tableLayout = 'fixed';
-    });
+    // 1) 建立隱藏 iframe（固定 720px 寬，獨立 layout context）
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = [
+      'position:fixed', 'left:-99999px', 'top:0',
+      'width:' + A4_RENDER_WIDTH + 'px',
+      'height:1200px', // 暫時夠用，最後會看 iframe 內容真實高度
+      'border:0', 'visibility:hidden', 'pointer-events:none',
+    ].join(';');
+    document.body.appendChild(iframe);
 
     try {
-      // 強制 reflow + 等下一幀才擷取，確保新寬度生效
-      void page.offsetWidth;
-      await new Promise(r => requestAnimationFrame(() => r()));
-      await new Promise(r => setTimeout(r, 50));
+      // 2) 把原頁面所有 stylesheets + #printPage clone 進 iframe
+      const idoc = iframe.contentDocument;
+      idoc.open();
+      idoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
+      // 同步原頁面 link rel=stylesheet
+      document.querySelectorAll('link[rel="stylesheet"]').forEach((l) => {
+        idoc.write(`<link rel="stylesheet" href="${l.href}">`);
+      });
+      // 同步原頁面 inline <style>
+      document.querySelectorAll('style').forEach((s) => {
+        idoc.write('<style>' + s.textContent + '</style>');
+      });
+      // iframe 內強制 720px viewport + table-layout:fixed
+      idoc.write(`<style>
+        html, body { margin: 0; padding: 0; background: #fff; }
+        body { width: ${A4_RENDER_WIDTH}px; }
+        .print-page { width: ${A4_RENDER_WIDTH}px !important; min-width: ${A4_RENDER_WIDTH}px !important; max-width: ${A4_RENDER_WIDTH}px !important; }
+        table { table-layout: fixed; width: 100%; }
+        .no-print { display: none !important; }
+      </style>`);
+      idoc.write('</head><body></body></html>');
+      idoc.close();
+      // clone #printPage 進去
+      const clonedPage = page.cloneNode(true);
+      idoc.body.appendChild(clonedPage);
 
-      const canvas = await html2canvas(page, {
+      // 3) 等 iframe 內 stylesheet 載入 + reflow
+      await new Promise((resolve) => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        const links = idoc.querySelectorAll('link[rel="stylesheet"]');
+        if (links.length === 0) return finish();
+        let pending = links.length;
+        links.forEach((l) => {
+          if (l.sheet) {
+            if (--pending === 0) finish();
+          } else {
+            l.addEventListener('load', () => { if (--pending === 0) finish(); }, { once: true });
+            l.addEventListener('error', () => { if (--pending === 0) finish(); }, { once: true });
+          }
+        });
+        setTimeout(finish, 3000); // 安全 timeout
+      });
+      void clonedPage.offsetWidth; // 強制 reflow
+      await new Promise((r) => setTimeout(r, 100));
+
+      // 4) iframe 高度依 content 自動調整（避免裁切）
+      iframe.style.height = (clonedPage.offsetHeight + 40) + 'px';
+
+      // 5) html2canvas 對 iframe 內的 clone 進行擷取
+      const canvas = await html2canvas(clonedPage, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
         width: A4_RENDER_WIDTH,
-        windowWidth: A4_RENDER_WIDTH + 40,
+        height: clonedPage.offsetHeight,
+        windowWidth: A4_RENDER_WIDTH,
+        windowHeight: clonedPage.offsetHeight,
+        // iframe 內 capture，避免被原頁面 zoom/transform 影響
       });
+
       const imgData = canvas.toDataURL('image/jpeg', 0.92);
       const pdf = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageW = 210, pageH = 297;
-      // 印表機安全邊界：多數家用／辦公印表機不可列印區約 3-5mm，
-      // 預留 6mm 邊界讓使用者能用「100% 原始大小」直接列印不被裁切。
       const safeMargin = 6;
       const printableW = pageW - safeMargin * 2;
       const printableH = pageH - safeMargin * 2;
       const imgRatio = canvas.height / canvas.width;
-
-      // 以「等比例縮放」塞進可列印區，取長寬兩者較嚴格的限制
       let drawW = printableW;
       let drawH = printableW * imgRatio;
-      if (drawH > printableH) {
-        drawH = printableH;
-        drawW = printableH / imgRatio;
-      }
+      if (drawH > printableH) { drawH = printableH; drawW = printableH / imgRatio; }
       const offsetX = (pageW - drawW) / 2;
       const offsetY = (pageH - drawH) / 2;
       pdf.addImage(imgData, 'JPEG', offsetX, offsetY, drawW, drawH);
       return pdf.output('blob');
     } finally {
-      page.style.width = oldW;
-      page.style.minWidth = oldMinW;
-      page.style.maxWidth = oldMaxW;
-      // 還原 table 樣式
-      oldTableStyles.forEach((r) => {
-        r.el.style.width = r.w;
-        r.el.style.tableLayout = r.tableLayout;
-      });
-      // 還原 no-print 元素原本 display 狀態
-      noPrintOld.forEach((r) => { r.el.style.display = r.display; });
+      // 清理 iframe
+      try { document.body.removeChild(iframe); } catch (_) {}
     }
   }
 
