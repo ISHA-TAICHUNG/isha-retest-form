@@ -889,13 +889,17 @@
     imageStore[key] = dataUrl;
   }
 
-  // 載入既有暫存（讓使用者重新進入表單時保留照片）
+  // 載入既有暫存：使用者從預覽頁按「返回編輯」回來時，要還原他編輯過的欄位
+  // 不只還原圖片，也要還原使用者填寫過的非清冊欄位（電話/地址/發票/考場/月份等）
   function loadCachedImages() {
     try {
       const raw = sessionStorage.getItem(FORM_KEY);
       if (!raw) return;
       const obj = JSON.parse(raw);
-      if (obj && obj.images) {
+      if (!obj) return;
+
+      // 還原圖片
+      if (obj.images) {
         Object.keys(obj.images).forEach((k) => {
           if (obj.images[k]) {
             imageStore[k] = obj.images[k];
@@ -903,6 +907,40 @@
             if (slot) renderPreview(slot, obj.images[k]);
           }
         });
+      }
+
+      // 還原使用者編輯過的欄位（覆寫 prefillFields 從 record 帶入的初值）
+      const setVal = (id, v) => {
+        if (v === undefined || v === null || v === '') return;
+        const el = $(id);
+        if (el) el.value = v;
+      };
+      setVal('name', obj.name);
+      setVal('idNumber', obj.idNumber);
+      setVal('birthDate', obj.birthDate);
+      setVal('mobilePhone', obj.mobilePhone);
+      setVal('phoneOffice', obj.phoneOffice);
+      setVal('phoneHome', obj.phoneHome);
+      setVal('emergencyName', obj.emergencyName);
+      setVal('emergencyPhone', obj.emergencyPhone);
+      setVal('zipCode', obj.zipCode);
+      setVal('address', obj.address);
+      setVal('invoiceTaxId', obj.invoiceTaxId);
+      setVal('examVenue', obj.examVenue);
+      setVal('examMonth', obj.examMonth);
+
+      // radio 群組
+      if (obj.education) {
+        const r = document.querySelector(`input[name="education"][value="${obj.education}"]`);
+        if (r) r.checked = true;
+      }
+      if (obj.disability) {
+        const r = document.querySelector(`input[name="disability"][value="${obj.disability}"]`);
+        if (r) r.checked = true;
+      }
+      if (obj.invoiceType) {
+        const r = document.querySelector(`input[name="invoiceType"][value="${obj.invoiceType}"]`);
+        if (r) r.checked = true;
       }
     } catch (e) {}
   }
@@ -945,7 +983,7 @@
       invoiceTaxId: $('invoiceTaxId') ? $('invoiceTaxId').value.trim() : '',
       examVenue: $('examVenue') ? $('examVenue').value.trim() : '',
       examMonth: $('examMonth') ? $('examMonth').value.trim() : '',
-      examDate: ($('examDateValue') && $('examDateValue').textContent !== '—') ? $('examDateValue').textContent.trim() : '',
+      examDate: ($('examDateValue') && $('examDateValue').dataset.value) || '',
       zipCode: $('zipCode').value.trim(),
       address: $('address').value.trim(),
       education: educationRadio ? educationRadio.value : '',
@@ -1050,11 +1088,13 @@
       const date = (scheduleData[venue] && scheduleData[venue][month]) || '';
       if (date) {
         valEl.textContent = date;
+        valEl.dataset.value = date;  // collectPayload 從 dataset 讀，避免依賴 textContent
         card.classList.remove('hidden');
       } else {
         // 行事曆找不到對應 → 隱藏卡片（避免顯示「—」誤導學員）
         card.classList.add('hidden');
         valEl.textContent = '—';
+        delete valEl.dataset.value;
       }
     };
 

@@ -155,7 +155,7 @@ window.cacheSet = function (key, data, ttlMs) {
   try {
     sessionStorage.setItem(
       key,
-      JSON.stringify({ data, expiresAt: ttlMs ? Date.now() + ttlMs : null, savedAt: Date.now() })
+      JSON.stringify({ data, expiresAt: (typeof ttlMs === 'number' && ttlMs > 0) ? Date.now() + ttlMs : null, savedAt: Date.now() })
     );
   } catch (e) {
     console.warn('cacheSet failed:', e);

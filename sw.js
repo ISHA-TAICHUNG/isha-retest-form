@@ -6,22 +6,22 @@
  *   - GAS API 請求：永遠 network（不快取，避免資料過期）
  *   - 升級時改 CACHE_NAME 即會自動清舊快取
  */
-const CACHE_NAME = 'osha-form-v20260423e';
+const CACHE_NAME = 'osha-form-v20260423f';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './form.html',
   './print.html',
   './manifest.json',
-  './css/main.css?v=20260423e',
-  './css/print.css?v=20260423e',
-  './js/config.js?v=20260423e',
-  './js/utils.js?v=20260423e',
-  './js/api.js?v=20260423e',
-  './js/job-categories.js?v=20260423e',
-  './js/index.js?v=20260423e',
-  './js/form.js?v=20260423e',
-  './js/print.js?v=20260423e',
+  './css/main.css?v=20260423f',
+  './css/print.css?v=20260423f',
+  './js/config.js?v=20260423f',
+  './js/utils.js?v=20260423f',
+  './js/api.js?v=20260423f',
+  './js/job-categories.js?v=20260423f',
+  './js/index.js?v=20260423f',
+  './js/form.js?v=20260423f',
+  './js/print.js?v=20260423f',
 ];
 
 self.addEventListener('install', (event) => {

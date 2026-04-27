@@ -276,7 +276,11 @@ function getScheduleCached() {
   if (cached) return JSON.parse(cached);
   const schedule = loadSchedule();
   try {
-    cache.put(SCHEDULE_CACHE_KEY, JSON.stringify(schedule), CACHE_TTL_SEC);
+    // 空結果只 cache 5 分鐘 — 避免 admin 還沒上傳行事曆時，剛好 1 個請求進來
+    // 把空物件 cache 1 小時，導致接下來 60 分鐘所有人都拿不到資料
+    const isEmpty = !schedule || Object.keys(schedule).length === 0;
+    const ttl = isEmpty ? 300 : CACHE_TTL_SEC;
+    cache.put(SCHEDULE_CACHE_KEY, JSON.stringify(schedule), ttl);
   } catch (e) {}
   return schedule;
 }
@@ -331,15 +335,20 @@ function loadSchedule() {
 function parseScheduleRows(rows) {
   if (!rows || rows.length < 2) return {};
   const headers = (rows[0] || []).map(function (v) { return cellStr(v); });
-  const col = {
-    venue: headers.indexOf('考場'),
-    batch: headers.indexOf('梯次'),  // 可選欄位
-    examDate: -1,
+  // 寬鬆比對：欄頭含關鍵字即可，方便維運人員自由命名（考場 / 考試地點 / 場地…）
+  const findCol = function (keywords) {
+    for (let i = 0; i < headers.length; i++) {
+      for (let k = 0; k < keywords.length; k++) {
+        if (headers[i].indexOf(keywords[k]) !== -1) return i;
+      }
+    }
+    return -1;
   };
-  // 「開考日」欄位可能寫「開考日」「開考日(起)」「開考日（起）」
-  for (let i = 0; i < headers.length; i++) {
-    if (headers[i].indexOf('開考日') !== -1) { col.examDate = i; break; }
-  }
+  const col = {
+    venue: findCol(['考場', '地點', '場地']),
+    batch: findCol(['梯次']),  // 可選欄位
+    examDate: findCol(['開考日', '考試日', '測驗日']),
+  };
   if (col.venue < 0 || col.examDate < 0) return {};
 
   const out = {};
