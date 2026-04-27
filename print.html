@@ -2,7 +2,9 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- 強制 viewport 為 A4 寬度（720px）讓行動裝置也用桌面版排版，
+       避免 Android Chrome 用窄 viewport reflow 後表格中文擠成直書 -->
+  <meta name="viewport" content="width=720, initial-scale=0.5, maximum-scale=3.0, user-scalable=yes" />
   <title>確認送出 — 管理職類測驗補考報名表</title>
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self';" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -11,8 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="css/main.css?v=20260423g" />
-  <link rel="stylesheet" href="css/print.css?v=20260423g" />
+  <link rel="stylesheet" href="css/main.css?v=20260423h" />
+  <link rel="stylesheet" href="css/print.css?v=20260423h" />
 </head>
 <body>
   <div class="print-toolbar no-print">
@@ -238,8 +240,8 @@
     首屏不載入（省 ~220KB），使用者按下「送出報名」時由 print.js 動態插入 script。
     SRI integrity 也在 print.js 內檢核。
   -->
-  <script src="js/config.js?v=20260423g"></script>
-  <script src="js/utils.js?v=20260423g"></script>
-  <script src="js/print.js?v=20260423g"></script>
+  <script src="js/config.js?v=20260423h"></script>
+  <script src="js/utils.js?v=20260423h"></script>
+  <script src="js/print.js?v=20260423h"></script>
 </body>
 </html>

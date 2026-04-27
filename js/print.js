@@ -231,8 +231,22 @@
     page.style.minWidth = A4_RENDER_WIDTH + 'px';
     page.style.maxWidth = A4_RENDER_WIDTH + 'px';
 
+    // Android Chrome 雙重保險：把所有 table 也固定寬度，避免 viewport 縮窄時
+    // 內部 colgroup 的 % 寬度被算成相對 360px → 中文欄位擠成直書
+    const tables = page.querySelectorAll('table');
+    const oldTableStyles = [];
+    tables.forEach((t) => {
+      oldTableStyles.push({ el: t, w: t.style.width, tableLayout: t.style.tableLayout });
+      t.style.width = '100%';
+      t.style.tableLayout = 'fixed';
+    });
+
     try {
+      // 強制 reflow + 等下一幀才擷取，確保新寬度生效
+      void page.offsetWidth;
       await new Promise(r => requestAnimationFrame(() => r()));
+      await new Promise(r => setTimeout(r, 50));
+
       const canvas = await html2canvas(page, {
         scale: 2,
         useCORS: true,
@@ -266,6 +280,11 @@
       page.style.width = oldW;
       page.style.minWidth = oldMinW;
       page.style.maxWidth = oldMaxW;
+      // 還原 table 樣式
+      oldTableStyles.forEach((r) => {
+        r.el.style.width = r.w;
+        r.el.style.tableLayout = r.tableLayout;
+      });
       // 還原 no-print 元素原本 display 狀態
       noPrintOld.forEach((r) => { r.el.style.display = r.display; });
     }
