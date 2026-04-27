@@ -326,31 +326,40 @@ function loadSchedule() {
   }
 }
 
-// 將「考場/梯次/報名時間/開考日」二維陣列 → { 考場: { 梯次: 開考日 } }
+// 將「考場/開考日」二維陣列 → { 考場: { 月份: 開考日 } }
+// 月份優先用「梯次」欄（若存在），否則從開考日 MM/DD 推導
 function parseScheduleRows(rows) {
   if (!rows || rows.length < 2) return {};
   const headers = (rows[0] || []).map(function (v) { return cellStr(v); });
   const col = {
     venue: headers.indexOf('考場'),
-    batch: headers.indexOf('梯次'),
-    regPeriod: headers.indexOf('報名時間'),
+    batch: headers.indexOf('梯次'),  // 可選欄位
     examDate: -1,
   };
   // 「開考日」欄位可能寫「開考日」「開考日(起)」「開考日（起）」
   for (let i = 0; i < headers.length; i++) {
     if (headers[i].indexOf('開考日') !== -1) { col.examDate = i; break; }
   }
-  if (col.venue < 0 || col.batch < 0 || col.examDate < 0) return {};
+  if (col.venue < 0 || col.examDate < 0) return {};
 
   const out = {};
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     const venue = cellStr(r[col.venue]);
-    const batch = cellStr(r[col.batch]).replace(/\D/g, '');
     const examDate = formatExamDate(r[col.examDate]);
-    if (!venue || !batch || !examDate) continue;
+    if (!venue || !examDate) continue;
+
+    // 月份來源：優先梯次欄，否則從 MM/DD 抓月份
+    let month = '';
+    if (col.batch >= 0) month = cellStr(r[col.batch]).replace(/\D/g, '');
+    if (!month) {
+      const m = examDate.match(/^(\d{1,2})\b/);
+      if (m) month = String(parseInt(m[1], 10));
+    }
+    if (!month) continue;
+
     if (!out[venue]) out[venue] = {};
-    out[venue][batch] = examDate;
+    out[venue][month] = examDate;
   }
   return out;
 }
