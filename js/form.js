@@ -36,8 +36,10 @@
   function fillJobCategory() {
     const el = $('jobCategory');
     if (!el) return;
+    // 以清冊（record）自帶的 jobName 為主 — 那是訓練單位的官方資料
+    // 對照表只在清冊沒帶 jobName 時當備援
     const match = window.getJobCategoryByCode(record.jobCode);
-    const name = match ? match.name : (record.jobName || '');
+    const name = (record.jobName && record.jobName.trim()) || (match ? match.name : '');
     el.value = record.jobCode ? `${record.jobCode}　${name}`.trim() : '';
     el.dataset.code = record.jobCode || '';
     el.dataset.name = name;
@@ -71,8 +73,10 @@
 
     // 訓練職類預設與測驗職類相同（鎖定唯讀）
     const jobMatch = window.getJobCategoryByCode(record.jobCode);
+    // 同 fillJobCategory：以清冊自帶 name 為主，對照表為備援
+    const trainCatName = (record.jobName && record.jobName.trim()) || (jobMatch ? jobMatch.name : '');
     const trainCatText = record.jobCode
-      ? `${record.jobCode}　${jobMatch ? jobMatch.name : (record.jobName || '')}`.trim()
+      ? `${record.jobCode}　${trainCatName}`.trim()
       : (record.jobName || '');
     if ($('trainCategory')) $('trainCategory').value = trainCatText;
 
@@ -1083,8 +1087,10 @@
     const jobCategoryEl = $('jobCategory');
     const jobCode = (jobCategoryEl && jobCategoryEl.dataset.code) || record.jobCode || '';
     const jobMatch = window.getJobCategoryByCode(jobCode);
+    // 同 fillJobCategory：以清冊自帶 name 為主，對照表為備援
     const jobName = (jobCategoryEl && jobCategoryEl.dataset.name)
-      || (jobMatch ? jobMatch.name : (record.jobName || ''));
+      || (record.jobName && record.jobName.trim())
+      || (jobMatch ? jobMatch.name : '');
 
     return {
       // 訓練/測驗資料
