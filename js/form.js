@@ -111,31 +111,124 @@
 
   // ============ 圖片上傳處理 ============
   // 讀取 File 為 HTMLImageElement（同時處理 EXIF 直拍旋轉）
-  function fileToImage(file) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
+  // 讀檔成可繪製的影像來源
+  // 優先用 createImageBitmap with imageOrientation:'from-image'（自動套用 EXIF
+  // 旋轉，解決相簿選的照片是直拍但 EXIF 標 90° 的常見情況）
+  // 不支援時退回 <img>，並加 EXIF parser 手動旋轉作為 fallback
+  async function fileToImage(file) {
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        return bmp; // ImageBitmap 也能傳給 canvas.drawImage
+      } catch (e) {
+        // 部分舊版瀏覽器不支援 imageOrientation 選項 → 退回 <img> 手動處理 EXIF
+      }
+    }
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
       const fr = new FileReader();
-      fr.onload = () => {
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = fr.result;
-      };
+      fr.onload = () => { im.onload = () => resolve(im); im.onerror = reject; im.src = fr.result; };
       fr.onerror = reject;
       fr.readAsDataURL(file);
     });
+    // 嘗試讀 EXIF orientation；無法讀就直接回原圖
+    let orientation = 1;
+    try { orientation = await readExifOrientation(file); } catch (_) {}
+    if (orientation && orientation > 1) {
+      return applyExifOrientation(img, orientation);
+    }
+    return img;
   }
 
-  // 將直拍圖片順時針旋轉 90° 使其變橫式（身分證應為橫式）
+  // 從 JPEG bytes 讀 EXIF Orientation tag（1-8）
+  // 1: normal / 3: 180° / 6: 90°CW / 8: 90°CCW（其餘為翻轉組合）
+  function readExifOrientation(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = (e) => {
+        const view = new DataView(e.target.result);
+        if (view.getUint16(0, false) !== 0xFFD8) return resolve(1); // 非 JPEG
+        const length = view.byteLength;
+        let offset = 2;
+        while (offset < length) {
+          if (view.getUint16(offset + 2, false) <= 8) return resolve(1);
+          const marker = view.getUint16(offset, false);
+          offset += 2;
+          if (marker === 0xFFE1) {
+            if (view.getUint32(offset += 2, false) !== 0x45786966) return resolve(1); // 'Exif'
+            const little = view.getUint16(offset += 6, false) === 0x4949;
+            offset += view.getUint32(offset + 4, little);
+            const tags = view.getUint16(offset, little);
+            offset += 2;
+            for (let i = 0; i < tags; i++) {
+              if (view.getUint16(offset + (i * 12), little) === 0x0112) {
+                return resolve(view.getUint16(offset + (i * 12) + 8, little));
+              }
+            }
+          } else if ((marker & 0xFF00) !== 0xFF00) {
+            break;
+          } else {
+            offset += view.getUint16(offset, false);
+          }
+        }
+        resolve(1);
+      };
+      fr.onerror = reject;
+      fr.readAsArrayBuffer(file.slice(0, 65536)); // 只讀前 64KB 找 EXIF
+    });
+  }
+
+  // 依 EXIF orientation 把影像繪到正確方向的 canvas
+  function applyExifOrientation(img, orientation) {
+    const c = document.createElement('canvas');
+    const w = img.width || img.naturalWidth;
+    const h = img.height || img.naturalHeight;
+    // 5/6/7/8 需要交換寬高
+    const swap = orientation >= 5 && orientation <= 8;
+    c.width = swap ? h : w;
+    c.height = swap ? w : h;
+    const ctx = c.getContext('2d');
+    switch (orientation) {
+      case 2: ctx.transform(-1, 0, 0, 1, w, 0); break;          // 水平翻轉
+      case 3: ctx.transform(-1, 0, 0, -1, w, h); break;          // 180°
+      case 4: ctx.transform(1, 0, 0, -1, 0, h); break;           // 垂直翻轉
+      case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;            // 轉置
+      case 6: ctx.transform(0, 1, -1, 0, h, 0); break;           // 90° CW
+      case 7: ctx.transform(0, -1, -1, 0, h, w); break;          // 反轉置
+      case 8: ctx.transform(0, -1, 1, 0, 0, w); break;           // 90° CCW
+      default: break;
+    }
+    ctx.drawImage(img, 0, 0);
+    return c;
+  }
+
+  // 把任意影像來源（Image / ImageBitmap / Canvas）轉成 canvas
+  // 不再強制旋轉成橫式 — fileToImage 已用 EXIF 校正方向，方向錯時靠裁切
+  // modal 的旋轉按鈕讓使用者手動修正
+  function ensureCanvas(src) {
+    if (src && src.tagName === 'CANVAS') return src;
+    const w = src.width || src.naturalWidth;
+    const h = src.height || src.naturalHeight;
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    c.getContext('2d').drawImage(src, 0, 0);
+    return c;
+  }
+
+  // 保留別名給舊呼叫端，但行為不再「自動旋轉」
   function rotateImageIfPortrait(img) {
+    return ensureCanvas(img);
+  }
+  // 真的要 90° 旋轉的舊版邏輯，作為將來移除前的暫存（目前無人呼叫）
+  function _legacyRotateIfPortrait(img) {
     if (img.height <= img.width) {
-      // 已經是橫式
       const c = document.createElement('canvas');
       c.width = img.width;
       c.height = img.height;
       c.getContext('2d').drawImage(img, 0, 0);
       return c;
     }
-    // 直拍 → 順時針 90°
     const c = document.createElement('canvas');
     c.width = img.height;
     c.height = img.width;
@@ -164,17 +257,13 @@
 
   // ============ 方案 A：裁切 Modal ============
   const cropState = {
-    // 原圖（已自動旋轉為橫式）
     sourceCanvas: null,
-    // 顯示在 modal canvas 上時的縮放比
     displayScale: 1,
-    // 裁切框在「原圖座標系」的位置與大小
     box: { x: 0, y: 0, w: 0, h: 0 },
-    // 原圖尺寸快取
     srcW: 0,
     srcH: 0,
-    // 關閉時解析 Promise 的 resolver
     resolver: null,
+    targetKey: null,    // idFront / idBack — 旋轉時用來同步 rawStore
   };
 
   // 開啟裁切介面，回傳 Promise：裁切完成的 dataURL 或 null（取消）
@@ -184,6 +273,7 @@
       cropState.srcW = sourceCanvas.width;
       cropState.srcH = sourceCanvas.height;
       cropState.resolver = resolve;
+      cropState.targetKey = targetKey;
       // targetKey 目前僅作為輸入識別，不需存在 cropState 內
 
       const modal = $('cropModal');
@@ -399,6 +489,48 @@
       const dataUrl = canvasToDataUrl(cropState.sourceCanvas, ID_IMG_MAX_WIDTH, ID_IMG_QUALITY);
       closeCropModal(dataUrl);
     });
+
+    // 旋轉按鈕：當前 sourceCanvas 順時針 90°，重新初始化 modal 顯示
+    const rotateBtn = $('cropRotateBtn');
+    if (rotateBtn) {
+      rotateBtn.addEventListener('click', () => {
+        if (!cropState.sourceCanvas) return;
+        const rotated = rotateCanvas90Direct(cropState.sourceCanvas);
+        cropState.sourceCanvas = rotated;
+        cropState.srcW = rotated.width;
+        cropState.srcH = rotated.height;
+        // 同步 rawStore（讓「重新裁切」也跟著旋轉後的版本）
+        if (cropState.targetKey && rawStore[cropState.targetKey]) {
+          rawStore[cropState.targetKey] = rotated;
+        }
+        // 重繪 modal（仿照 openCropModal 的 RAF 區塊）
+        const stage = $('cropStage');
+        const canvas = $('cropCanvas');
+        const ctx = canvas.getContext('2d');
+        const scale = Math.min(stage.clientWidth / cropState.srcW, stage.clientHeight / cropState.srcH);
+        cropState.displayScale = scale;
+        canvas.width = Math.round(cropState.srcW * scale);
+        canvas.height = Math.round(cropState.srcH * scale);
+        ctx.drawImage(rotated, 0, 0, canvas.width, canvas.height);
+        // 裁切框重新置中為 1.58:1 85%
+        const imgRatio = cropState.srcW / cropState.srcH;
+        let boxW, boxH;
+        if (imgRatio > ID_CARD_RATIO) {
+          boxH = cropState.srcH * 0.85;
+          boxW = boxH * ID_CARD_RATIO;
+        } else {
+          boxW = cropState.srcW * 0.85;
+          boxH = boxW / ID_CARD_RATIO;
+        }
+        cropState.box = {
+          x: (cropState.srcW - boxW) / 2,
+          y: (cropState.srcH - boxH) / 2,
+          w: boxW,
+          h: boxH,
+        };
+        updateCropBoxUI();
+      });
+    }
   }
 
   // 原始（已旋轉為橫式）canvas 快取：讓「重新裁切」不用再讀檔
@@ -809,11 +941,9 @@
 
     showProcessing(slot);
     try {
-      // 相機拍出來的通常已是橫式（video 依裝置旋轉），但從相簿選的需要檢查
-      // P2：直接 canvas 旋轉，避免 dataURL 往返消耗（舊 Android 低階機記憶體敏感）
-      if (sourceCanvas.height > sourceCanvas.width) {
-        sourceCanvas = rotateCanvas90Direct(sourceCanvas);
-      }
+      // 不再強制把直拍照片轉成橫式 — 過去這條 fallback 在 EXIF 已被
+      // fileToImage 校正後反而會把方向轉錯。改由裁切 modal 提供「↻ 旋轉」
+      // 按鈕讓使用者自己處理 edge case。
       rawStore[targetKey] = sourceCanvas;
 
       const dataUrl = await openCropModal(sourceCanvas, targetKey);
