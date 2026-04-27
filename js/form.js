@@ -945,6 +945,7 @@
       invoiceTaxId: $('invoiceTaxId') ? $('invoiceTaxId').value.trim() : '',
       examVenue: $('examVenue') ? $('examVenue').value.trim() : '',
       examMonth: $('examMonth') ? $('examMonth').value.trim() : '',
+      examDate: ($('examDateValue') && $('examDateValue').textContent !== '—') ? $('examDateValue').textContent.trim() : '',
       zipCode: $('zipCode').value.trim(),
       address: $('address').value.trim(),
       education: educationRadio ? educationRadio.value : '',
@@ -1028,6 +1029,47 @@
     });
   }
 
+  // ============ 預計開考日 ============
+  // 從 GAS 拿 schedule，依考場 + 應考月份顯示開考日；資料變更時自動更新
+  let scheduleData = null;
+  async function setupExamDate() {
+    const card = $('examDateCard');
+    const valEl = $('examDateValue');
+    const venueEl = $('examVenue');
+    const monthEl = $('examMonth');
+    if (!card || !valEl || !venueEl || !monthEl) return;
+
+    const refresh = () => {
+      const venue = venueEl.value.trim();
+      const month = monthEl.value.trim();
+      if (!venue || !month || !scheduleData) {
+        card.classList.add('hidden');
+        valEl.textContent = '—';
+        return;
+      }
+      const date = (scheduleData[venue] && scheduleData[venue][month]) || '';
+      if (date) {
+        valEl.textContent = date;
+        card.classList.remove('hidden');
+      } else {
+        // 行事曆找不到對應 → 隱藏卡片（避免顯示「—」誤導學員）
+        card.classList.add('hidden');
+        valEl.textContent = '—';
+      }
+    };
+
+    venueEl.addEventListener('change', refresh);
+    monthEl.addEventListener('change', refresh);
+
+    // 背景 fetch；失敗不影響表單操作
+    try {
+      scheduleData = await window.fetchSchedule();
+      refresh();
+    } catch (err) {
+      console.warn('schedule fetch failed:', err);
+    }
+  }
+
   // ============ 初始化 ============
   fillJobCategory();
   prefillFields();
@@ -1036,4 +1078,5 @@
   bindUploads();
   loadCachedImages();
   bindActions();
+  setupExamDate();
 })();

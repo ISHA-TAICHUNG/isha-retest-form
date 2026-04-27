@@ -81,6 +81,17 @@
     setText('invoiceTaxId', payload.invoiceTaxId || '');
     setText('invoiceExamVenue', payload.examVenue || '_____');
     setText('invoiceExamMonth', payload.examMonth ? payload.examMonth + ' 月' : '_____');
+    // 開考日（從行事曆對應而來；無資料就維持隱藏）
+    const examDateRow = $('invoiceExamDateRow');
+    const examDateNote = $('invoiceExamDateNote');
+    if (payload.examDate) {
+      setText('invoiceExamDate', payload.examDate);
+      if (examDateRow) examDateRow.style.display = '';
+      if (examDateNote) examDateNote.style.display = '';
+    } else {
+      if (examDateRow) examDateRow.style.display = 'none';
+      if (examDateNote) examDateNote.style.display = 'none';
+    }
 
     setText('cell-zip', formatZipDigits(payload.zipCode));
     setText('cell-address', payload.address || '');

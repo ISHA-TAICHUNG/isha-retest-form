@@ -58,4 +58,27 @@
     const res = await window.fetchWithTimeout(url, { method: 'GET' }, 8000);
     return await res.json();
   };
+
+  /**
+   * 取得考試行事曆（公開資訊 + sessionStorage 快取 30 分鐘）
+   * @returns {Promise<Object>} { '忠明': { '1': '01/22', ... }, '龍井': {...} }
+   */
+  const SCHEDULE_CACHE_KEY = 'osha_schedule_v1';
+  const SCHEDULE_CACHE_TTL_MS = 30 * 60 * 1000;
+  window.fetchSchedule = async function (forceRefresh = false) {
+    if (!forceRefresh) {
+      const cached = window.cacheGet(SCHEDULE_CACHE_KEY);
+      if (cached && cached.schedule) return cached.schedule;
+    }
+    const url = `${cfg.GAS_URL}?action=schedule&token=${encodeURIComponent(cfg.API_TOKEN)}` +
+      `&origin=${encodeURIComponent(window.location.origin)}` +
+      `&fp=${encodeURIComponent(navigator.userAgent.slice(0, 80))}`;
+    const res = await window.fetchWithTimeout(url, { method: 'GET' }, cfg.FETCH_TIMEOUT_MS);
+    if (!res.ok) throw new Error(`GAS 回應錯誤：HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(`GAS 錯誤：${json.error}`);
+    const schedule = json.schedule || {};
+    try { window.cacheSet(SCHEDULE_CACHE_KEY, { schedule: schedule }, SCHEDULE_CACHE_TTL_MS); } catch (e) {}
+    return schedule;
+  };
 })();

@@ -48,6 +48,9 @@ const RATE_LIMIT_PER_MIN = 10;
 
 const CACHE_KEY = 'roster_v2';
 const CACHE_TTL_SEC = 3600;
+const SCHEDULE_CACHE_KEY = 'schedule_v1';
+// 考試行事曆檔名關鍵字（檔名包含其中之一即視為行事曆檔）
+const SCHEDULE_FILE_KEYWORDS = ['考試行事曆', '行事曆', 'schedule', '考試日期'];
 
 // ====== POST 入口：接收報名表送出（PDF 上傳） ======
 function doPost(e) {
@@ -208,6 +211,7 @@ function doGet(e) {
     if (action === 'clearCache') {
       if (!isAdmin) return jsonResp({ error: 'admin_only' });
       CacheService.getScriptCache().remove(CACHE_KEY);
+      CacheService.getScriptCache().remove(SCHEDULE_CACHE_KEY);
       return jsonResp({ ok: true, cleared: true });
     }
 
@@ -216,6 +220,12 @@ function doGet(e) {
       if (!isAdmin) return jsonResp({ error: 'admin_only' });
       const records = getRosterCached();
       return jsonResp({ total: records.length });
+    }
+
+    if (action === 'schedule') {
+      // 公開資訊（考場 + 開考日表），無 PII，所有 user token 皆可呼叫
+      const schedule = getScheduleCached();
+      return jsonResp({ ok: true, schedule: schedule });
     }
 
     return jsonResp({ error: 'unknown_action: ' + action });
@@ -249,11 +259,109 @@ function loadAllRosters() {
       const file = iter.next();
       const name = file.getName();
       if (name.indexOf('~$') === 0) continue;
+      // 跳過考試行事曆檔（不是清冊）
+      if (isScheduleFile(name)) continue;
       const records = readOneFile(file);
       records.forEach(function (r) { r._sourceFile = name; });
       Array.prototype.push.apply(out, records);
     }
   }
+}
+
+// ====== 考試行事曆 ======
+// 結構：{ '忠明': { '1': '01/22', '2': '02/24', ... }, '龍井': { ... } }
+function getScheduleCached() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(SCHEDULE_CACHE_KEY);
+  if (cached) return JSON.parse(cached);
+  const schedule = loadSchedule();
+  try {
+    cache.put(SCHEDULE_CACHE_KEY, JSON.stringify(schedule), CACHE_TTL_SEC);
+  } catch (e) {}
+  return schedule;
+}
+
+function isScheduleFile(filename) {
+  const lower = filename.toLowerCase();
+  return SCHEDULE_FILE_KEYWORDS.some(function (k) {
+    return filename.indexOf(k) !== -1 || lower.indexOf(k.toLowerCase()) !== -1;
+  });
+}
+
+function loadSchedule() {
+  const folder = DriveApp.getFolderById(ROSTER_FOLDER_ID);
+  // 在同一資料夾中找含「行事曆 / schedule」關鍵字的檔
+  const candidates = [];
+  pushIfMatch(folder.getFilesByType(MimeType.MICROSOFT_EXCEL));
+  pushIfMatch(folder.getFilesByType(MimeType.GOOGLE_SHEETS));
+  pushIfMatch(folder.getFilesByType(MimeType.CSV));
+
+  if (candidates.length === 0) return {};
+
+  // 取最新修改的一份
+  candidates.sort(function (a, b) { return b.getLastUpdated() - a.getLastUpdated(); });
+  const file = candidates[0];
+
+  let rows;
+  if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
+    rows = SpreadsheetApp.openById(file.getId()).getSheets()[0].getDataRange().getValues();
+  } else if (file.getMimeType() === MimeType.CSV) {
+    rows = Utilities.parseCsv(file.getBlob().getDataAsString('UTF-8'));
+  } else {
+    // xlsx → 暫轉 Google Sheet
+    const tmpId = convertXlsxToGoogleSheet(file.getBlob(), file.getId());
+    try {
+      rows = SpreadsheetApp.openById(tmpId).getSheets()[0].getDataRange().getValues();
+    } finally {
+      try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (e) {}
+    }
+  }
+  return parseScheduleRows(rows);
+
+  function pushIfMatch(iter) {
+    while (iter.hasNext()) {
+      const f = iter.next();
+      if (isScheduleFile(f.getName())) candidates.push(f);
+    }
+  }
+}
+
+// 將「考場/梯次/報名時間/開考日」二維陣列 → { 考場: { 梯次: 開考日 } }
+function parseScheduleRows(rows) {
+  if (!rows || rows.length < 2) return {};
+  const headers = (rows[0] || []).map(function (v) { return cellStr(v); });
+  const col = {
+    venue: headers.indexOf('考場'),
+    batch: headers.indexOf('梯次'),
+    regPeriod: headers.indexOf('報名時間'),
+    examDate: -1,
+  };
+  // 「開考日」欄位可能寫「開考日」「開考日(起)」「開考日（起）」
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i].indexOf('開考日') !== -1) { col.examDate = i; break; }
+  }
+  if (col.venue < 0 || col.batch < 0 || col.examDate < 0) return {};
+
+  const out = {};
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const venue = cellStr(r[col.venue]);
+    const batch = cellStr(r[col.batch]).replace(/\D/g, '');
+    const examDate = formatExamDate(r[col.examDate]);
+    if (!venue || !batch || !examDate) continue;
+    if (!out[venue]) out[venue] = {};
+    out[venue][batch] = examDate;
+  }
+  return out;
+}
+
+// 將 Date 或字串統一格式化為 MM/DD
+function formatExamDate(v) {
+  if (v === null || v === undefined || v === '') return '';
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'MM/dd');
+  }
+  return String(v).trim();
 }
 
 function readOneFile(file) {

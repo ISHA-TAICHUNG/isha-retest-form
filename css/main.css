@@ -868,6 +868,52 @@ a:focus-visible {
 .upload-slot.has-image .upload-cta { display: none; }
 
 /* ===== 拍照提示卡 ===== */
+/* ===== 預計開考日提示卡 ===== */
+.exam-date-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FEFBEA 100%);
+  border: 2px solid #F59E0B;
+  border-radius: var(--rd-md);
+  padding: 16px 20px;
+  margin: var(--sp-4) 0 0;
+  animation: examDateFadeIn 0.3s ease-out;
+}
+.exam-date-card.hidden { display: none; }
+@keyframes examDateFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.exam-date-card-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.exam-date-card-body {
+  flex: 1;
+}
+.exam-date-card-title {
+  font-size: var(--fs-md);
+  color: #78350F;
+  margin-bottom: 6px;
+}
+.exam-date-card-title strong {
+  color: #B45309;
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  letter-spacing: 0.5px;
+}
+.exam-date-card-note {
+  font-size: var(--fs-xs);
+  color: #92400E;
+  line-height: 1.5;
+}
+.exam-date-card-note strong {
+  color: #78350F;
+  font-weight: 700;
+}
+
 .photo-tips {
   background: var(--color-accent-soft);
   border: 1px solid #BAE6FD;
