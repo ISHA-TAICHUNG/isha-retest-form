@@ -204,3 +204,34 @@ window.showToast = function (msg, type = 'info', durationMs = 4000) {
     el.classList.remove('show');
   }, durationMs);
 };
+
+/**
+ * 主動觸發 Service Worker 更新檢查 + 接收 SW_UPDATED 訊息時自動重整
+ * 解決使用者裝置上 SW 卡舊版（造成 PDF 跑版等 bug）的問題
+ *
+ * 行為：
+ *   1. 頁面載入後立即呼叫 reg.update() 強制檢查新版 SW
+ *   2. 收到新 SW activate 後傳來的 SW_UPDATED 訊息 → 顯示 toast 並 1.5 秒後 reload
+ *   3. 防止 reload 迴圈（用 sessionStorage flag）
+ */
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.getRegistration().then((reg) => {
+    if (reg) {
+      // 主動檢查新版（每次頁面載入都檢查，加速更新）
+      reg.update().catch(() => {});
+    }
+  });
+  // 監聽 SW activate 後的訊息
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (!e.data || e.data.type !== 'SW_UPDATED') return;
+    if (sessionStorage.getItem('sw_just_reloaded')) return; // 防迴圈
+    sessionStorage.setItem('sw_just_reloaded', '1');
+    if (typeof window.showToast === 'function') {
+      window.showToast('🔄 系統已更新，正在重新載入…', 'info', 2000);
+    }
+    setTimeout(() => { window.location.reload(); }, 1500);
+  });
+  // navigation 完成後清掉 flag（下次升版時又能正常觸發）
+  setTimeout(() => sessionStorage.removeItem('sw_just_reloaded'), 5000);
+})();

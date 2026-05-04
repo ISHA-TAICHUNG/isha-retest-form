@@ -25,5 +25,5 @@ window.APP_CONFIG = {
   FETCH_TIMEOUT_MS: 20000, // GAS 首次讀檔較慢，給寬鬆 20 秒
 
   // === 應用版本 ===
-  VERSION: '20260423n',
+  VERSION: '20260423o',
 };

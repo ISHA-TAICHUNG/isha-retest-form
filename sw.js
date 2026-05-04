@@ -6,22 +6,22 @@
  *   - GAS API 請求：永遠 network（不快取，避免資料過期）
  *   - 升級時改 CACHE_NAME 即會自動清舊快取
  */
-const CACHE_NAME = 'osha-form-v20260423n';
+const CACHE_NAME = 'osha-form-v20260423o';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './form.html',
   './print.html',
   './manifest.json',
-  './css/main.css?v=20260423n',
-  './css/print.css?v=20260423n',
-  './js/config.js?v=20260423n',
-  './js/utils.js?v=20260423n',
-  './js/api.js?v=20260423n',
-  './js/job-categories.js?v=20260423n',
-  './js/index.js?v=20260423n',
-  './js/form.js?v=20260423n',
-  './js/print.js?v=20260423n',
+  './css/main.css?v=20260423o',
+  './css/print.css?v=20260423o',
+  './js/config.js?v=20260423o',
+  './js/utils.js?v=20260423o',
+  './js/api.js?v=20260423o',
+  './js/job-categories.js?v=20260423o',
+  './js/index.js?v=20260423o',
+  './js/form.js?v=20260423o',
+  './js/print.js?v=20260423o',
 ];
 
 self.addEventListener('install', (event) => {
@@ -32,12 +32,16 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    // 清掉舊 cache
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+    // 立即接管
+    await self.clients.claim();
+    // 通知所有 active client：「新 SW 已接管，請重新載入」
+    const clientList = await self.clients.matchAll({ type: 'window' });
+    clientList.forEach((c) => c.postMessage({ type: 'SW_UPDATED', cacheName: CACHE_NAME }));
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
