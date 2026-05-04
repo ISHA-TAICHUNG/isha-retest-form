@@ -231,17 +231,44 @@
 
     try {
       // 2) 把原頁面所有 stylesheets + #printPage clone 進 iframe
+      //    ⚠ 過去用 <link rel=stylesheet href=...> 等網路載入，慢網路 / Google Fonts
+      //    卡住會 timeout 後跑版。改成從 document.styleSheets 直接讀 cssText 注入
+      //    inline <style>，iframe 內**立即**有完整 CSS，不需等網路。
       const idoc = iframe.contentDocument;
       idoc.open();
       idoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body></body></html>');
       idoc.close();
-      // 用 createElement + setAttribute 安全注入 stylesheet（避免 href 含特殊字元破壞 HTML）
+      // 從目前頁面的 document.styleSheets 抓 same-origin CSS 內容（main.css / print.css）
+      // 跨源（Google Fonts）會被 CORS 擋，跳過 — 字體 fallback 不影響 layout
+      for (const sheet of document.styleSheets) {
+        let cssText = '';
+        try {
+          const rules = sheet.cssRules || sheet.rules;
+          if (!rules) continue;
+          for (const rule of rules) cssText += rule.cssText + '\n';
+        } catch (e) {
+          // CORS 阻擋 → 跳過（通常是 Google Fonts，不影響表格 layout）
+          continue;
+        }
+        if (cssText) {
+          const style = idoc.createElement('style');
+          style.textContent = cssText;
+          idoc.head.appendChild(style);
+        }
+      }
+      // 跨源 stylesheet（讀不到內容）仍用 link 嘗試載（有就有，無就無，不阻塞）
       document.querySelectorAll('link[rel="stylesheet"]').forEach((l) => {
+        // 同源已用 styleSheets 讀進來，跨源才需要 link
+        try {
+          const u = new URL(l.href);
+          if (u.origin === window.location.origin) return;
+        } catch (_) { return; }
         const link = idoc.createElement('link');
         link.setAttribute('rel', 'stylesheet');
         link.setAttribute('href', l.href);
         idoc.head.appendChild(link);
       });
+      // 同步原頁面的 inline <style>
       document.querySelectorAll('style').forEach((s) => {
         const style = idoc.createElement('style');
         style.textContent = s.textContent;
@@ -262,24 +289,9 @@
       const clonedPage = page.cloneNode(true);
       idoc.body.appendChild(clonedPage);
 
-      // 3) 等 iframe 內 stylesheet 載入 + reflow
-      await new Promise((resolve) => {
-        let done = false;
-        const finish = () => { if (!done) { done = true; resolve(); } };
-        const links = idoc.querySelectorAll('link[rel="stylesheet"]');
-        if (links.length === 0) return finish();
-        let pending = links.length;
-        links.forEach((l) => {
-          if (l.sheet) {
-            if (--pending === 0) finish();
-          } else {
-            l.addEventListener('load', () => { if (--pending === 0) finish(); }, { once: true });
-            l.addEventListener('error', () => { if (--pending === 0) finish(); }, { once: true });
-          }
-        });
-        setTimeout(finish, 3000); // 安全 timeout
-      });
-      void clonedPage.offsetWidth; // 強制 reflow
+      // 3) reflow + 短延遲讓 inline style 套用（不需等網路了）
+      void clonedPage.offsetWidth;
+      await new Promise((r) => requestAnimationFrame(() => r()));
       await new Promise((r) => setTimeout(r, 100));
 
       // 4) iframe 高度依 content 自動調整（避免裁切）
