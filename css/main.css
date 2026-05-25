@@ -1385,6 +1385,7 @@ a:focus-visible {
   border-radius: 8px;
   font-size: 14px;
   line-height: 1.5;
+  white-space: pre-line; /* 讓錯誤訊息內的 \n 真的換行(學員指引才看得清楚) */
 }
 .submit-status.hidden { display: none; }
 .submit-status.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }

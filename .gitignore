@@ -34,3 +34,6 @@ TP610*.doc
 完整的範本.pdf
 屋頂*.doc
 docs/附件四*.PDF
+
+# debug-only,不入 git
+tools/debug_*.js

@@ -193,8 +193,21 @@
       s.src = lib.src;
       s.integrity = lib.integrity;
       s.crossOrigin = 'anonymous';
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('無法載入 ' + lib.src));
+      // 20 秒 timeout — SRI mismatch 在某些瀏覽器既不 fire onerror 也不 fire onload (silent block)
+      // settled 旗標避免 race(timeout 過後又 onerror 觸發二次 reject)
+      let settled = false;
+      const t = setTimeout(() => {
+        if (settled) return; settled = true;
+        reject(new Error('CDN 載入逾時(20s):' + lib.src + ' — 請確認網路或重新整理'));
+      }, 20000);
+      s.onload = () => {
+        if (settled) return; settled = true;
+        clearTimeout(t); resolve();
+      };
+      s.onerror = () => {
+        if (settled) return; settled = true;
+        clearTimeout(t); reject(new Error('無法載入 ' + lib.src));
+      };
       document.head.appendChild(s);
     });
   }
@@ -235,6 +248,11 @@
       //    卡住會 timeout 後跑版。改成從 document.styleSheets 直接讀 cssText 注入
       //    inline <style>，iframe 內**立即**有完整 CSS，不需等網路。
       const idoc = iframe.contentDocument;
+      // LINE / FB In-App WebView 對 sandboxed iframe.contentDocument 可能回 null
+      // 給使用者明確中文錯誤指引,而不是讓他看到 "Cannot read properties of null"
+      if (!idoc) {
+        throw new Error('您目前的瀏覽器(可能是 LINE 或 Facebook 內建)不支援 PDF 產生。請複製此頁網址到 Safari 或 Chrome 瀏覽器開啟後再送出。');
+      }
       idoc.open();
       idoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body></body></html>');
       idoc.close();
@@ -298,8 +316,16 @@
       iframe.style.height = (clonedPage.offsetHeight + 40) + 'px';
 
       // 5) html2canvas 對 iframe 內的 clone 進行擷取
-      const canvas = await html2canvas(clonedPage, {
-        scale: 2,
+      // ⚠ 老 iPhone / Android(<4GB RAM)在 scale=2 處理大 DOM 時極易 OOM,
+      //   promise 會永遠 pending 而非 reject → 學員按下後永遠卡「處理中…」。
+      //   修法 1:依裝置記憶體降級 scale(deviceMemory API 不支援時保守用 1.5)
+      //   修法 2:Promise.race 加 45 秒 timeout 兜底,卡住至少能解除按鈕讓學員重試
+      // iOS Safari 全版本不支援 navigator.deviceMemory(永遠 undefined),
+      // 必須當「未知裝置」也走保守路線,否則 iPhone 6s/7/SE1 (1-2GB RAM) 仍會 OOM
+      const lowMem = (typeof navigator.deviceMemory !== 'number') || navigator.deviceMemory < 4;
+      const captureScale = lowMem ? 1.5 : 2;
+      const canvasPromise = html2canvas(clonedPage, {
+        scale: captureScale,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
@@ -309,6 +335,10 @@
         windowHeight: clonedPage.offsetHeight,
         // iframe 內 capture，避免被原頁面 zoom/transform 影響
       });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('PDF 產生逾時(45 秒),可能您的裝置記憶體不足。請關閉其他 App 後重試,或改用電腦操作。')), 45000)
+      );
+      const canvas = await Promise.race([canvasPromise, timeoutPromise]);
 
       const imgData = canvas.toDataURL('image/jpeg', 0.92);
       const pdf = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -333,8 +363,24 @@
   function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
       const fr = new FileReader();
-      fr.onload = () => resolve(fr.result.split(',')[1]);
-      fr.onerror = reject;
+      // 30 秒 timeout — iOS Safari 14 以下在 low-memory 時 FileReader 會 silently drop 任務
+      // 用 settled 旗標避免 abort 觸發的 onerror 重複 reject(雖無害但清console)
+      let settled = false;
+      const t = setTimeout(() => {
+        if (settled) return; settled = true;
+        try { fr.abort(); } catch (_) {}
+        reject(new Error('檔案轉檔逾時(30s),可能您的裝置記憶體不足。請重試或改用電腦。'));
+      }, 30000);
+      fr.onload = () => {
+        if (settled) return; settled = true;
+        clearTimeout(t);
+        resolve(fr.result.split(',')[1]);
+      };
+      fr.onerror = () => {
+        if (settled) return; settled = true;
+        clearTimeout(t);
+        reject(fr.error || new Error('FileReader 失敗'));
+      };
       fr.readAsDataURL(blob);
     });
   }
@@ -417,14 +463,26 @@
       }
     } catch (err) {
       console.error(err);
-      showSubmitStatus('❌ 送出失敗：' + err.message + '。請稍候再試，或聯繫訓練單位。', 'error');
-      btn.disabled = false;
-      btn.textContent = originalText;
+      // PDF 產生逾時時 html2canvas 仍在背景跑佔記憶體,讓學員「重新整理頁面」釋放更安全
+      // 否則學員按重試會疊加 canvasPromise → 必崩
+      const isTimeoutErr = err && /逾時/.test(err.message || '');
+      if (isTimeoutErr) {
+        showSubmitStatus('❌ ' + err.message + '\n👉 請下拉重新整理此頁面後再送出(或關閉瀏覽器分頁重開)。', 'error');
+        btn.textContent = '請重新整理頁面後再試';
+        // disabled 保留 true,強迫 reload 釋放記憶體
+      } else {
+        showSubmitStatus('❌ 送出失敗：' + err.message + '。請稍候再試，或聯繫訓練單位。', 'error');
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   }
 
   // 事件
-  $('backBtn').addEventListener('click', () => { window.location.href = 'form.html'; });
+  // ⚠ 兩個 button 都要 null check,免得任一 button 缺(SW/cache 卡舊 HTML)時整段 IIFE 中斷
+  // 導致 submitBtn 永遠沒綁、學員按下「字面意義 0 反應」(2026-05-25 deep review 修正)
+  const backBtn = $('backBtn');
+  if (backBtn) backBtn.addEventListener('click', () => { window.location.href = 'form.html'; });
   const submitBtn = $('submitBtn');
   if (submitBtn) submitBtn.addEventListener('click', submitToCloud);
 
